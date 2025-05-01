@@ -27,7 +27,7 @@ func main() {
 	}
 
 	m, err := migrate.NewWithDatabaseInstance(
-		"file://services/user-service/internal/infra/database/migrate/migrations",
+		"file://internal/infra/database/migrate/migrations",
 		"public",
 		driver,
 	)

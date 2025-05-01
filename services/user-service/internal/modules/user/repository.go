@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"msn/pkg/common/fault"
 	"msn/services/user-service/internal/infra/database/model"
 	"time"
@@ -97,30 +98,27 @@ func (r repo) Insert(ctx context.Context, user model.User) error {
 		INSERT INTO users (
 			id,
 			name,
-			username,
 			email,
 			password,
 			avatar_url,
-			enabled,
-			locked,
-			created,
-			updated
+			created_at,
+			updated_at,
+			deleted_at
 		) VALUES (
 			:id,
 			:name,
-			:username,
 			:email,
 			:password,
 			:avatar_url,
-			:enabled,
-			:locked,
-			:created,
-			:updated
+			:created_at,
+			:updated_at,
+			:deleted_at
 		)
 	`
 
 	_, err := r.db.NamedExecContext(ctx, query, user)
 	if err != nil {
+		fmt.Println(err)
 		return fault.New("failed to insert user", fault.WithError(err))
 	}
 
