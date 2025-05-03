@@ -7,6 +7,8 @@ import (
 	"msn/services/user-service/internal/config"
 	"msn/services/user-service/internal/infra/database/pg"
 	"msn/services/user-service/internal/infra/http/server"
+	"msn/services/user-service/internal/modules/auth"
+	"msn/services/user-service/internal/modules/session"
 	"msn/services/user-service/internal/modules/user"
 	"net/http"
 	"os"
@@ -28,12 +30,25 @@ func main() {
 	defer pgconn.Close()
 
 	userRepo := user.NewRepo(pgconn.DB())
+	sessionRepo := session.NewRepo(pgconn.DB())
 
 	userService := user.NewService(user.ServiceConfig{
 		UserRepo: userRepo,
 	})
+	sessionService := session.NewService(session.ServiceConfig{
+		SessionRepo: sessionRepo,
+		UserService: userService,
+	})
+	authService := auth.NewService(auth.ServiceConfig{
+		UserRepo:       userRepo,
+		SessionRepo:    sessionRepo,
+		SessionService: sessionService,
+		AccessKey:      cfg.JWTAccessKey,
+		RefreshKey:     cfg.JWTRefreshKey,
+	})
 
 	user.NewHandler(userService).RegisterRoutes(r)
+	auth.NewHandler(authService).RegisterRoutes(r)
 
 	srv := server.New(server.Config{
 		Port:         cfg.Port,

@@ -33,8 +33,9 @@ func (s service) CreateUser(ctx context.Context, input dto.CreateUser) (*dto.Use
 		return nil, fault.NewConflict("e-mail already taken")
 	}
 
-	newUser, err := New(input.Name, input.Email, input.Password, input.AvatarUrl)
+	newUser, err := New(input.Name, input.Email, input.Password, input.ConfirmPassword, input.AvatarUrl)
 	if err != nil {
+		fmt.Println(err)
 		return nil, fault.NewUnprocessableEntity("failed to create user entity")
 	}
 	model := newUser.Model()
@@ -83,25 +84,24 @@ func (s service) GetUserByEmail(ctx context.Context, email string) (*dto.UserRes
 	return &user, nil
 }
 
-// func (s service) GetUserByID(ctx context.Context, userId string) (*dto.UserResponse, error) {
-// 	userRecord, err := s.userRepo.GetByID(ctx, userId)
-// 	if err != nil {
-// 		return nil, fault.NewBadRequest("failed to retrieve user")
-// 	} else if userRecord == nil {
-// 		return nil, fault.NewNotFound("user not found")
-// 	}
-//
-// 	user := dto.UserResponse{
-// 		ID:        userRecord.ID,
-// 		Name:      userRecord.Name,
-// 		Username:  userRecord.Username,
-// 		Email:     userRecord.Email,
-// 		AvatarURL: userRecord.AvatarURL,
-// 		Locked:    userRecord.Locked,
-// 		Created:   userRecord.Created,
-// 		Updated:   userRecord.Updated,
-// 	}
-//
-// 	return &user, nil
-// }
-//
+func (s service) GetUserByID(ctx context.Context, userId string) (*dto.UserResponse, error) {
+	userRecord, err := s.userRepo.GetByID(ctx, userId)
+	if err != nil {
+		return nil, fault.NewBadRequest("failed to retrieve user")
+	}
+	if userRecord == nil {
+		return nil, fault.NewNotFound("user not found")
+	}
+
+	user := dto.UserResponse{
+		ID:        userRecord.ID,
+		Name:      userRecord.Name,
+		Email:     userRecord.Email,
+		AvatarURL: userRecord.AvatarURL,
+		CreatedAt: userRecord.CreatedAt,
+		UpdatedAt: userRecord.UpdatedAt,
+		DeletedAt: userRecord.DeletedAt,
+	}
+
+	return &user, nil
+}

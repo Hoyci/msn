@@ -3,10 +3,11 @@ package dto
 import "time"
 
 type CreateUser struct {
-	Name      string  `json:"name"`
-	Email     string  `json:"email"`
-	Password  string  `json:"password"`
-	AvatarUrl *string `json:"avatar_url"`
+	Name            string  `json:"name"`
+	Email           string  `json:"email"`
+	Password        string  `json:"password"`
+	ConfirmPassword string  `json:"confirm_password"`
+	AvatarUrl       *string `json:"avatar_url"`
 }
 
 type UserResponse struct {
