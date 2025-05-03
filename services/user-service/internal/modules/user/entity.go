@@ -9,14 +9,15 @@ import (
 )
 
 type user struct {
-	id         string
-	name       string
-	email      string
-	password   string
-	avatar_url *string
-	created_at time.Time
-	updated_at *time.Time
-	deleted_at *time.Time
+	id              string
+	name            string
+	email           string
+	password        string
+	confirmPassword string
+	avatar_url      *string
+	created_at      time.Time
+	updated_at      *time.Time
+	deleted_at      *time.Time
 }
 
 func NewFromModel(m model.User) *user {
@@ -31,21 +32,17 @@ func NewFromModel(m model.User) *user {
 	}
 }
 
-func New(name, email, password string, avatar_url *string) (*user, error) {
-	hashedPass, err := crypto.HashPassword(password)
-	if err != nil {
-		return nil, fault.New("failed to hash password", fault.WithError(err))
-	}
-
+func New(name, email, password, confirmPassword string, avatar_url *string) (*user, error) {
 	u := user{
-		id:         uid.New("user"),
-		name:       name,
-		email:      email,
-		password:   hashedPass,
-		avatar_url: avatar_url,
-		created_at: time.Now(),
-		updated_at: nil,
-		deleted_at: nil,
+		id:              uid.New("user"),
+		name:            name,
+		email:           email,
+		password:        password,
+		confirmPassword: confirmPassword,
+		avatar_url:      avatar_url,
+		created_at:      time.Now(),
+		updated_at:      nil,
+		deleted_at:      nil,
 	}
 
 	if err := u.validate(); err != nil {
@@ -55,6 +52,13 @@ func New(name, email, password string, avatar_url *string) (*user, error) {
 			fault.WithError(err),
 		)
 	}
+
+	hashedPass, err := crypto.HashPassword(password)
+	if err != nil {
+		return nil, fault.New("failed to hash password", fault.WithError(err))
+	}
+
+	u.password = hashedPass
 
 	return &u, nil
 }
@@ -81,6 +85,12 @@ func (u *user) validate() error {
 	}
 	if u.email == "" {
 		return fault.New("email is required")
+	}
+	if u.confirmPassword == "" {
+		return fault.New("confirm_password is required")
+	}
+	if u.password != u.confirmPassword {
+		return fault.New("password and confirm_password doesnt match")
 	}
 
 	return nil

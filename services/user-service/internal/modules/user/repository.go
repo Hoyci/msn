@@ -74,21 +74,21 @@ func (r repo) GetByEmail(ctx context.Context, email string) (*model.User, error)
 // 	return nil
 // }
 
-// func (r repo) GetByID(ctx context.Context, userId string) (*model.User, error) {
-// 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-// 	defer cancel()
-//
-// 	var user model.User
-// 	err := r.db.GetContext(ctx, &user, "SELECT * FROM users WHERE id = $1 LIMIT 1", userId)
-// 	if err != nil {
-// 		if errors.Is(err, sql.ErrNoRows) {
-// 			return nil, nil
-// 		}
-// 		return nil, fault.New("failed to retrieve user", fault.WithError(err))
-// 	}
-//
-// 	return &user, nil
-// }
+func (r repo) GetByID(ctx context.Context, userId string) (*model.User, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	var user model.User
+	err := r.db.GetContext(ctx, &user, "SELECT * FROM users WHERE id = $1 LIMIT 1", userId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fault.New("failed to retrieve user", fault.WithError(err))
+	}
+
+	return &user, nil
+}
 
 func (r repo) Insert(ctx context.Context, user model.User) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
