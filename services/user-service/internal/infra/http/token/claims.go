@@ -1,8 +1,11 @@
 package token
 
 import (
+	"crypto/rsa"
+	"fmt"
 	"msn/pkg/common/dto"
 	"msn/pkg/utils/uid"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -25,4 +28,29 @@ func NewClaims(user dto.UserResponse, duration time.Duration) (*Claims, error) {
 			ID:        jti,
 		},
 	}, nil
+}
+
+func Verify(secretKey *rsa.PrivateKey, v string) (*Claims, error) {
+	if strings.TrimSpace(v) == "" {
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	keyFunc := func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("invalid token signing method")
+		}
+		return secretKey, nil
+	}
+
+	token, err := jwt.ParseWithClaims(v, &Claims{}, keyFunc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse token: %w", err)
+	}
+
+	claims, ok := token.Claims.(*Claims)
+	if !ok {
+		return nil, fmt.Errorf("invalid token claims")
+	}
+
+	return claims, nil
 }

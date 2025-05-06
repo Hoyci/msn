@@ -48,7 +48,7 @@ func main() {
 	})
 
 	user.NewHandler(userService).RegisterRoutes(r)
-	auth.NewHandler(authService).RegisterRoutes(r)
+	auth.NewHandler(authService, cfg.JWTAccessKey).RegisterRoutes(r)
 
 	srv := server.New(server.Config{
 		Port:         cfg.Port,

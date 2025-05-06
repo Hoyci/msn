@@ -3,9 +3,11 @@ package auth
 import (
 	"context"
 	"crypto/rsa"
+	"log/slog"
 	"msn/pkg/common/dto"
 	"msn/pkg/common/fault"
 	"msn/pkg/utils/crypto"
+	"msn/services/user-service/internal/infra/http/middleware"
 	"msn/services/user-service/internal/infra/http/token"
 	"msn/services/user-service/internal/modules/session"
 	"msn/services/user-service/internal/modules/user"
@@ -35,10 +37,6 @@ type service struct {
 
 	AccessKey  *rsa.PrivateKey
 	RefreshKey *rsa.PrivateKey
-}
-
-func (s *service) Logout(ctx context.Context) error {
-	panic("unimplemented")
 }
 
 func NewService(c ServiceConfig) Service {
@@ -112,4 +110,30 @@ func (s service) Login(ctx context.Context, email, password string) (*dto.LoginR
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
+}
+
+func (s service) Logout(ctx context.Context) error {
+	c, ok := ctx.Value(middleware.AuthKey{}).(*token.Claims)
+	if !ok {
+		slog.Error("context does not contain auth key")
+		return fault.NewUnauthorized("access token not provided")
+	}
+
+	sessRecord, err := s.sessionRepo.GetActiveByUserID(ctx, c.User.ID)
+	if err != nil {
+		return fault.NewBadRequest("failed to retrieve active session")
+	}
+	if sessRecord == nil {
+		return fault.NewNotFound("active session not found")
+	}
+
+	sess := session.NewFromModel(*sessRecord)
+	sess.Deactivate()
+
+	err = s.sessionRepo.Update(ctx, sess.Model())
+	if err != nil {
+		return fault.NewBadRequest("failed to deactivate session")
+	}
+
+	return nil
 }

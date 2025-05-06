@@ -37,6 +37,30 @@ func (r *repo) GetAllByUserID(ctx context.Context, userID string) ([]model.Sessi
 	return sessions, nil
 }
 
+func (r *repo) GetActiveByUserID(ctx context.Context, userID string) (*model.Session, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	var session model.Session
+	err := r.db.GetContext(
+		ctx,
+		&session,
+		"SELECT * FROM session WHERE user_id = $1 AND deleted_at IS NULL LIMIT 1",
+		userID,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fault.New(
+			"failed to retrieve active session",
+			fault.WithError(err),
+		)
+	}
+
+	return &session, nil
+}
+
 func (r *repo) GetByJTI(ctx context.Context, JTI string) (*model.Session, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
