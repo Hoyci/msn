@@ -14,6 +14,7 @@ type Repository interface {
 	Insert(ctx context.Context, session model.Session) error
 	Update(ctx context.Context, session model.Session) error
 	GetAllByUserID(ctx context.Context, userID string) ([]model.Session, error)
+	GetActiveByUserID(ctx context.Context, userID string) (*model.Session, error)
 	GetByJTI(ctx context.Context, JTI string) (*model.Session, error)
 	DeactivateAll(ctx context.Context, userID string) error
 }

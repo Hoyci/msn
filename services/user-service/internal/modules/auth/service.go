@@ -3,9 +3,11 @@ package auth
 import (
 	"context"
 	"crypto/rsa"
+	"log/slog"
 	"msn/pkg/common/dto"
 	"msn/pkg/common/fault"
 	"msn/pkg/utils/crypto"
+	"msn/services/user-service/internal/infra/http/middleware"
 	"msn/services/user-service/internal/infra/http/token"
 	"msn/services/user-service/internal/modules/session"
 	"msn/services/user-service/internal/modules/user"
@@ -14,8 +16,8 @@ import (
 )
 
 const (
-	accessTokenDuration  = time.Minute * 15
-	refreshTokenDuration = time.Hour * 24 * 30
+	AccessTokenDuration  = time.Minute * 15
+	RefreshTokenDuration = time.Hour * 24 * 30
 )
 
 type ServiceConfig struct {
@@ -35,10 +37,6 @@ type service struct {
 
 	AccessKey  *rsa.PrivateKey
 	RefreshKey *rsa.PrivateKey
-}
-
-func (s *service) Logout(ctx context.Context) error {
-	panic("unimplemented")
 }
 
 func NewService(c ServiceConfig) Service {
@@ -86,12 +84,12 @@ func (s service) Login(ctx context.Context, email, password string) (*dto.LoginR
 		return nil, fault.NewBadRequest("failed to deactivate user sessions")
 	}
 
-	accessToken, _, err := token.Generate(s.AccessKey, user, accessTokenDuration)
+	accessToken, _, err := token.Generate(s.AccessKey, user, AccessTokenDuration)
 	if err != nil {
 		return nil, fault.NewInternalServerError("failed to login")
 	}
 
-	refreshToken, refreshTokenClaims, err := token.Generate(s.RefreshKey, user, refreshTokenDuration)
+	refreshToken, refreshTokenClaims, err := token.Generate(s.RefreshKey, user, RefreshTokenDuration)
 	if err != nil {
 		return nil, fault.NewInternalServerError("failed to login")
 	}
@@ -111,5 +109,58 @@ func (s service) Login(ctx context.Context, email, password string) (*dto.LoginR
 		SessionID:    session.ID,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+	}, nil
+}
+
+func (s service) Logout(ctx context.Context) error {
+	c, ok := ctx.Value(middleware.AuthKey{}).(*token.Claims)
+	if !ok {
+		slog.Error("context does not contain auth key")
+		return fault.NewUnauthorized("access token not provided")
+	}
+
+	sessRecord, err := s.sessionRepo.GetActiveByUserID(ctx, c.User.ID)
+	if err != nil {
+		return fault.NewBadRequest("failed to retrieve active session")
+	}
+	if sessRecord == nil {
+		return fault.NewNotFound("active session not found")
+	}
+
+	sess := session.NewFromModel(*sessRecord)
+	sess.Deactivate()
+
+	err = s.sessionRepo.Update(ctx, sess.Model())
+	if err != nil {
+		return fault.NewBadRequest("failed to deactivate session")
+	}
+
+	return nil
+}
+
+func (s service) RenewAccessToken(ctx context.Context, refreshToken string) (*dto.RenewTokenResponse, error) {
+	claims, err := token.Verify(s.RefreshKey, refreshToken)
+	if err != nil {
+		return nil, fault.NewUnauthorized("invalid refresh token")
+	}
+
+	sessionRecord, err := s.sessionRepo.GetByJTI(ctx, claims.ID)
+	if err != nil || sessionRecord == nil || !sessionRecord.Active {
+		return nil, fault.NewBadRequest("invalid or inactive session")
+	}
+
+	if sessionRecord.ExpiresAt.Before(time.Now()) {
+		return nil, fault.NewUnauthorized("session expired")
+	}
+
+	user := claims.User
+
+	accessToken, _, err := token.Generate(s.AccessKey, user, AccessTokenDuration)
+	if err != nil {
+		return nil, fault.NewInternalServerError("failed to generate access token")
+	}
+
+	return &dto.RenewTokenResponse{
+		AccessToken: accessToken,
 	}, nil
 }

@@ -35,7 +35,6 @@ func (s service) CreateUser(ctx context.Context, input dto.CreateUser) (*dto.Use
 
 	newUser, err := New(input.Name, input.Email, input.Password, input.ConfirmPassword, input.AvatarUrl)
 	if err != nil {
-		fmt.Println(err)
 		return nil, fault.NewUnprocessableEntity("failed to create user entity")
 	}
 	model := newUser.Model()

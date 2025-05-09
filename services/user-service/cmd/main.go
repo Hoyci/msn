@@ -15,12 +15,21 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
+	"github.com/go-chi/cors"
 )
 
 func main() {
 	cfg := config.GetConfig()
 	ctx := context.Background()
 	r := chi.NewRouter()
+
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
 
 	pgconn, err := pg.NewConnection(cfg.PostgresDSN)
 	if err != nil {
@@ -48,7 +57,7 @@ func main() {
 	})
 
 	user.NewHandler(userService).RegisterRoutes(r)
-	auth.NewHandler(authService).RegisterRoutes(r)
+	auth.NewHandler(authService, cfg.JWTAccessKey).RegisterRoutes(r)
 
 	srv := server.New(server.Config{
 		Port:         cfg.Port,

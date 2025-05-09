@@ -10,3 +10,11 @@ type LoginResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 }
+
+type RenewTokenRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+type RenewTokenResponse struct {
+	AccessToken string `json:"access_token"`
+}
