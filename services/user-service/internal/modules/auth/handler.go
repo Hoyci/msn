@@ -41,6 +41,7 @@ func (h handler) RegisterRoutes(r *chi.Mux) {
 
 		// Public
 		r.Post("/login", h.handleLogin)
+		r.Post("/refresh", h.handleRenewToken)
 	})
 }
 
@@ -60,6 +61,16 @@ func (h handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    res.RefreshToken,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		MaxAge:   int(RefreshTokenDuration.Seconds()),
+	})
+
 	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
@@ -71,5 +82,33 @@ func (h handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	})
+
 	httputils.WriteSuccess(w, http.StatusOK)
+}
+
+func (h handler) handleRenewToken(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	cookie, err := r.Cookie("refresh_token")
+	if err != nil {
+		fault.NewHTTPError(w, fault.NewUnauthorized("refresh token not found"))
+		return
+	}
+
+	res, err := h.authService.RenewAccessToken(ctx, cookie.Value)
+	if err != nil {
+		fault.NewHTTPError(w, err)
+		return
+	}
+
+	httputils.WriteJSON(w, http.StatusOK, res)
 }

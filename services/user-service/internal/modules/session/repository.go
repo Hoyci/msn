@@ -45,7 +45,7 @@ func (r *repo) GetActiveByUserID(ctx context.Context, userID string) (*model.Ses
 	err := r.db.GetContext(
 		ctx,
 		&session,
-		"SELECT * FROM session WHERE user_id = $1 AND deleted_at IS NULL LIMIT 1",
+		"SELECT * FROM sessions WHERE user_id = $1 AND active = true LIMIT 1",
 		userID,
 	)
 	if err != nil {
@@ -123,7 +123,7 @@ func (r *repo) Update(ctx context.Context, session model.Session) error {
 		SET
 			active = :active,
 			jti = :jti,
-			updated = :updated
+			updated_at = :updated_at
 		WHERE id = :id
 	`
 

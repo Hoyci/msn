@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	accessTokenDuration  = time.Minute * 15
-	refreshTokenDuration = time.Hour * 24 * 30
+	AccessTokenDuration  = time.Minute * 15
+	RefreshTokenDuration = time.Hour * 24 * 30
 )
 
 type ServiceConfig struct {
@@ -84,12 +84,12 @@ func (s service) Login(ctx context.Context, email, password string) (*dto.LoginR
 		return nil, fault.NewBadRequest("failed to deactivate user sessions")
 	}
 
-	accessToken, _, err := token.Generate(s.AccessKey, user, accessTokenDuration)
+	accessToken, _, err := token.Generate(s.AccessKey, user, AccessTokenDuration)
 	if err != nil {
 		return nil, fault.NewInternalServerError("failed to login")
 	}
 
-	refreshToken, refreshTokenClaims, err := token.Generate(s.RefreshKey, user, refreshTokenDuration)
+	refreshToken, refreshTokenClaims, err := token.Generate(s.RefreshKey, user, RefreshTokenDuration)
 	if err != nil {
 		return nil, fault.NewInternalServerError("failed to login")
 	}
@@ -136,4 +136,31 @@ func (s service) Logout(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (s service) RenewAccessToken(ctx context.Context, refreshToken string) (*dto.RenewTokenResponse, error) {
+	claims, err := token.Verify(s.RefreshKey, refreshToken)
+	if err != nil {
+		return nil, fault.NewUnauthorized("invalid refresh token")
+	}
+
+	sessionRecord, err := s.sessionRepo.GetByJTI(ctx, claims.ID)
+	if err != nil || sessionRecord == nil || !sessionRecord.Active {
+		return nil, fault.NewBadRequest("invalid or inactive session")
+	}
+
+	if sessionRecord.ExpiresAt.Before(time.Now()) {
+		return nil, fault.NewUnauthorized("session expired")
+	}
+
+	user := claims.User
+
+	accessToken, _, err := token.Generate(s.AccessKey, user, AccessTokenDuration)
+	if err != nil {
+		return nil, fault.NewInternalServerError("failed to generate access token")
+	}
+
+	return &dto.RenewTokenResponse{
+		AccessToken: accessToken,
+	}, nil
 }
