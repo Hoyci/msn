@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	instance *handler
-	Once     sync.Once
+	categoryHandlerInstance *handler
+	Once                    sync.Once
 )
 
 type handler struct {
@@ -21,11 +21,11 @@ type handler struct {
 
 func NewHandler(categoriesService Service) *handler {
 	Once.Do(func() {
-		instance = &handler{
+		categoryHandlerInstance = &handler{
 			categoriesService: categoriesService,
 		}
 	})
-	return instance
+	return categoryHandlerInstance
 }
 
 func (h handler) RegisterRoutes(r *chi.Mux) {

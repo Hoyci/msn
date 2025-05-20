@@ -16,10 +16,10 @@ var (
 )
 
 type handler struct {
-	userService Service
+	userService UserService
 }
 
-func NewHandler(userService Service) *handler {
+func NewHandler(userService UserService) *handler {
 	Once.Do(func() {
 		instance = &handler{
 			userService: userService,

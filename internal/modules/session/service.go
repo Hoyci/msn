@@ -8,16 +8,16 @@ import (
 )
 
 type ServiceConfig struct {
-	SessionRepo Repository
-	UserService user.Service
+	SessionRepo SessionRepository
+	UserService user.UserService
 }
 
 type service struct {
-	sessionRepo Repository
-	userService user.Service
+	sessionRepo SessionRepository
+	userService user.UserService
 }
 
-func NewService(c ServiceConfig) Service {
+func NewSessionService(c ServiceConfig) SessionService {
 	return &service{
 		sessionRepo: c.SessionRepo,
 		userService: c.UserService,

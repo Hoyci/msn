@@ -11,15 +11,15 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type repo struct {
+type sessionRepository struct {
 	db *sqlx.DB
 }
 
-func NewRepo(db *sqlx.DB) Repository {
-	return &repo{db: db}
+func NewRepo(db *sqlx.DB) SessionRepository {
+	return &sessionRepository{db: db}
 }
 
-func (r *repo) GetAllByUserID(ctx context.Context, userID string) ([]model.Session, error) {
+func (r *sessionRepository) GetAllByUserID(ctx context.Context, userID string) ([]model.Session, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -37,7 +37,7 @@ func (r *repo) GetAllByUserID(ctx context.Context, userID string) ([]model.Sessi
 	return sessions, nil
 }
 
-func (r *repo) GetActiveByUserID(ctx context.Context, userID string) (*model.Session, error) {
+func (r *sessionRepository) GetActiveByUserID(ctx context.Context, userID string) (*model.Session, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -61,7 +61,7 @@ func (r *repo) GetActiveByUserID(ctx context.Context, userID string) (*model.Ses
 	return &session, nil
 }
 
-func (r *repo) GetByJTI(ctx context.Context, JTI string) (*model.Session, error) {
+func (r *sessionRepository) GetByJTI(ctx context.Context, JTI string) (*model.Session, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -82,7 +82,7 @@ func (r *repo) GetByJTI(ctx context.Context, JTI string) (*model.Session, error)
 	return &session, nil
 }
 
-func (r *repo) Insert(ctx context.Context, session model.Session) error {
+func (r *sessionRepository) Insert(ctx context.Context, session model.Session) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -114,7 +114,7 @@ func (r *repo) Insert(ctx context.Context, session model.Session) error {
 	return nil
 }
 
-func (r *repo) Update(ctx context.Context, session model.Session) error {
+func (r *sessionRepository) Update(ctx context.Context, session model.Session) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -135,7 +135,7 @@ func (r *repo) Update(ctx context.Context, session model.Session) error {
 	return nil
 }
 
-func (r repo) DeactivateAll(ctx context.Context, userId string) error {
+func (r sessionRepository) DeactivateAll(ctx context.Context, userId string) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 

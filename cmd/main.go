@@ -34,11 +34,11 @@ func main() {
 	)
 
 	ctx := context.Background()
-	r := chi.NewRouter()
+	router := chi.NewRouter()
 
-	r.Use(middleware.Logging)
+	router.Use(middleware.Logging)
 
-	r.Use(cors.Handler(cors.Options{
+	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
@@ -46,26 +46,26 @@ func main() {
 		MaxAge:           300,
 	}))
 
-	pgconn, err := pg.NewConnection(cfg.PostgresDSN)
+	pgConn, err := pg.NewPostgresConnection(cfg.PostgresDSN)
 	if err != nil {
 		slog.Error("failed to connect database", "error", err)
 		panic(err)
 	}
-	defer pgconn.Close()
+	defer pgConn.Close()
 
-	userRepo := user.NewRepo(pgconn.DB())
-	sessionRepo := session.NewRepo(pgconn.DB())
-	categoriesRepo := categories.NewRepo(pgconn.DB())
+	userRepo := user.NewRepo(pgConn.DB())
+	sessionRepo := session.NewRepo(pgConn.DB())
+	categoriesRepo := categories.NewRepo(pgConn.DB())
 
-	userService := user.NewService(user.ServiceConfig{
+	userService := user.NewUserService(user.ServiceConfig{
 		UserRepo:     userRepo,
 		CategoryRepo: categoriesRepo,
 	})
-	sessionService := session.NewService(session.ServiceConfig{
+	sessionService := session.NewSessionService(session.ServiceConfig{
 		SessionRepo: sessionRepo,
 		UserService: userService,
 	})
-	authService := auth.NewService(auth.ServiceConfig{
+	authService := auth.NewAuthService(auth.ServiceConfig{
 		UserRepo:       userRepo,
 		SessionRepo:    sessionRepo,
 		SessionService: sessionService,
@@ -76,16 +76,16 @@ func main() {
 		CategoriesRepo: categoriesRepo,
 	})
 
-	user.NewHandler(userService).RegisterRoutes(r)
-	auth.NewHandler(authService, cfg.JWTAccessKey).RegisterRoutes(r)
-	categories.NewHandler(categoriesService).RegisterRoutes(r)
+	user.NewHandler(userService).RegisterRoutes(router)
+	auth.NewHandler(authService, cfg.JWTAccessKey).RegisterRoutes(router)
+	categories.NewHandler(categoriesService).RegisterRoutes(router)
 
 	srv := server.New(server.Config{
 		Port:         cfg.Port,
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  time.Second * 5,
 		WriteTimeout: time.Second * 10,
-		Router:       r,
+		Router:       router,
 	})
 
 	shutdownErr := srv.GracefulShutdown(ctx, time.Second*30)
