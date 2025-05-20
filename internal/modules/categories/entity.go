@@ -26,7 +26,7 @@ func NewFromModel(m model.Category) *category {
 }
 
 func New(name string) (*category, error) {
-	c := category{
+	newCategory := category{
 		id:         uid.New("category"),
 		name:       name,
 		created_at: time.Now(),
@@ -34,7 +34,7 @@ func New(name string) (*category, error) {
 		deleted_at: nil,
 	}
 
-	if err := c.validate(); err != nil {
+	if err := newCategory.validate(); err != nil {
 		return nil, fault.New(
 			"failed to create category entity",
 			fault.WithTag(fault.INVALID_ENTITY),
@@ -42,7 +42,7 @@ func New(name string) (*category, error) {
 		)
 	}
 
-	return &c, nil
+	return &newCategory, nil
 }
 
 func (c *category) Model() model.Category {

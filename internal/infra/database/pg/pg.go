@@ -11,7 +11,7 @@ type Database struct {
 	db *sqlx.DB
 }
 
-func NewConnection(dsn string) (*Database, error) {
+func NewPostgresConnection(dsn string) (*Database, error) {
 	db, err := sqlx.Connect("postgres", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)

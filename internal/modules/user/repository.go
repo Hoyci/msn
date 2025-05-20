@@ -11,12 +11,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type repo struct {
+type userRepo struct {
 	db *sqlx.DB
 }
 
-func NewRepo(db *sqlx.DB) Repository {
-	return &repo{db: db}
+func NewRepo(db *sqlx.DB) UserRepository {
+	return &userRepo{db: db}
 }
 
 // func (r repo) Update(ctx context.Context, user model.User) error {
@@ -45,7 +45,7 @@ func NewRepo(db *sqlx.DB) Repository {
 // 	return nil
 // }
 
-func (r repo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
+func (r userRepo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -61,7 +61,7 @@ func (r repo) GetByEmail(ctx context.Context, email string) (*model.User, error)
 	return &user, nil
 }
 
-func (r repo) GetByID(ctx context.Context, userId string) (*model.User, error) {
+func (r userRepo) GetByID(ctx context.Context, userId string) (*model.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -77,7 +77,7 @@ func (r repo) GetByID(ctx context.Context, userId string) (*model.User, error) {
 	return &user, nil
 }
 
-func (r repo) Insert(ctx context.Context, user model.User) error {
+func (r userRepo) Insert(ctx context.Context, user model.User) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -115,7 +115,7 @@ func (r repo) Insert(ctx context.Context, user model.User) error {
 	return nil
 }
 
-func (r repo) GetUserRoleByName(ctx context.Context, name string) (*model.UserRole, error) {
+func (r userRepo) GetUserRoleByName(ctx context.Context, name string) (*model.UserRole, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 

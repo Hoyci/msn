@@ -24,23 +24,23 @@ type ServiceConfig struct {
 	AccessKey  *rsa.PrivateKey
 	RefreshKey *rsa.PrivateKey
 
-	UserRepo    user.Repository
-	SessionRepo session.Repository
+	UserRepo    user.UserRepository
+	SessionRepo session.SessionRepository
 
-	SessionService session.Service
+	SessionService session.SessionService
 }
 
-type service struct {
-	userRepo       user.Repository
-	sessionRepo    session.Repository
-	sessionService session.Service
+type authService struct {
+	userRepo       user.UserRepository
+	sessionRepo    session.SessionRepository
+	sessionService session.SessionService
 
 	AccessKey  *rsa.PrivateKey
 	RefreshKey *rsa.PrivateKey
 }
 
-func NewService(c ServiceConfig) Service {
-	return &service{
+func NewAuthService(c ServiceConfig) AuthService {
+	return &authService{
 		userRepo:       c.UserRepo,
 		sessionRepo:    c.SessionRepo,
 		sessionService: c.SessionService,
@@ -49,7 +49,7 @@ func NewService(c ServiceConfig) Service {
 	}
 }
 
-func (s service) Login(ctx context.Context, email, password string) (*dto.LoginResponse, error) {
+func (s authService) Login(ctx context.Context, email, password string) (*dto.LoginResponse, error) {
 	logger := logging.FromContext(ctx)
 
 	logger.DebugContext(ctx, "login_attempt", "email", email)
@@ -107,13 +107,13 @@ func (s service) Login(ctx context.Context, email, password string) (*dto.LoginR
 		return nil, fault.NewBadRequest("failed to deactivate user sessions")
 	}
 
-	accessToken, _, err := token.Generate(s.AccessKey, user, AccessTokenDuration)
+	accessToken, _, err := token.GenerateToken(s.AccessKey, user, AccessTokenDuration)
 	if err != nil {
 		logger.ErrorContext(ctx, "access_token_generation_failed", "error", err)
 		return nil, fault.NewInternalServerError("failed to login")
 	}
 
-	refreshToken, refreshTokenClaims, err := token.Generate(s.RefreshKey, user, RefreshTokenDuration)
+	refreshToken, refreshTokenClaims, err := token.GenerateToken(s.RefreshKey, user, RefreshTokenDuration)
 	if err != nil {
 		logger.ErrorContext(ctx, "refresh_token_generation_failed", "error", err)
 		return nil, fault.NewInternalServerError("failed to login")
@@ -143,7 +143,7 @@ func (s service) Login(ctx context.Context, email, password string) (*dto.LoginR
 	}, nil
 }
 
-func (s service) Logout(ctx context.Context) error {
+func (s authService) Logout(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
 
 	c, ok := ctx.Value(middleware.AuthKey{}).(*token.Claims)
@@ -195,7 +195,7 @@ func (s service) Logout(ctx context.Context) error {
 	return nil
 }
 
-func (s service) RenewAccessToken(ctx context.Context, refreshToken string) (*dto.RenewTokenResponse, error) {
+func (s authService) RenewAccessToken(ctx context.Context, refreshToken string) (*dto.RenewTokenResponse, error) {
 	logger := logging.FromContext(ctx)
 
 	logger.DebugContext(ctx, "token_renewal_attempt",
@@ -227,7 +227,7 @@ func (s service) RenewAccessToken(ctx context.Context, refreshToken string) (*dt
 		return nil, fault.NewUnauthorized("session expired")
 	}
 
-	accessToken, _, err := token.Generate(s.AccessKey, claims.User, AccessTokenDuration)
+	accessToken, _, err := token.GenerateToken(s.AccessKey, claims.User, AccessTokenDuration)
 	if err != nil {
 		logger.ErrorContext(ctx, "access_token_generation_failed",
 			"user_id", claims.User.ID,

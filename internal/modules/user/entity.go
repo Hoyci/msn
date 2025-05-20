@@ -15,9 +15,9 @@ type user struct {
 	email           string
 	password        string
 	confirmPassword string
-	avatar_url      *string
-	user_role_id    string
-	subcategory_id  *string
+	avatarURL       *string
+	userRoleID      string
+	subcategoryID   *string
 	created_at      time.Time
 	updated_at      *time.Time
 	deleted_at      *time.Time
@@ -25,28 +25,28 @@ type user struct {
 
 func NewFromModel(m model.User) *user {
 	return &user{
-		id:             m.ID,
-		name:           m.Name,
-		email:          m.Email,
-		password:       m.Password,
-		avatar_url:     m.AvatarURL,
-		user_role_id:   m.UserRoleID,
-		subcategory_id: m.SubcategoryID,
-		created_at:     m.CreatedAt,
-		updated_at:     m.UpdatedAt,
+		id:            m.ID,
+		name:          m.Name,
+		email:         m.Email,
+		password:      m.Password,
+		avatarURL:     m.AvatarURL,
+		userRoleID:    m.UserRoleID,
+		subcategoryID: m.SubcategoryID,
+		created_at:    m.CreatedAt,
+		updated_at:    m.UpdatedAt,
 	}
 }
 
-func New(name, email, password, confirm_password, user_role_id string, avatar_url, subcategory_id *string) (*user, error) {
+func New(name, email, password, confirm_password, userRoleID string, avatarURL, subcategoryID *string) (*user, error) {
 	u := user{
 		id:              uid.New("user"),
 		name:            name,
 		email:           email,
 		password:        password,
 		confirmPassword: confirm_password,
-		avatar_url:      avatar_url,
-		user_role_id:    user_role_id,
-		subcategory_id:  subcategory_id,
+		avatarURL:       avatarURL,
+		userRoleID:      userRoleID,
+		subcategoryID:   subcategoryID,
 		created_at:      time.Now(),
 		updated_at:      nil,
 		deleted_at:      nil,
@@ -76,9 +76,9 @@ func (u *user) Model() model.User {
 		Name:          u.name,
 		Email:         u.email,
 		Password:      u.password,
-		AvatarURL:     u.avatar_url,
-		UserRoleID:    u.user_role_id,
-		SubcategoryID: u.subcategory_id,
+		AvatarURL:     u.avatarURL,
+		UserRoleID:    u.userRoleID,
+		SubcategoryID: u.subcategoryID,
 		CreatedAt:     u.created_at,
 		UpdatedAt:     u.updated_at,
 		DeletedAt:     u.deleted_at,
@@ -104,7 +104,7 @@ func (u *user) validate() error {
 	if u.password != u.confirmPassword {
 		return fault.New("password and confirm_password doesnt match")
 	}
-	if u.user_role_id == "" {
+	if u.userRoleID == "" {
 		return fault.New("user_role_id is required")
 	}
 

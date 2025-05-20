@@ -9,7 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func Generate(secretKey *rsa.PrivateKey, user dto.UserResponse, duration time.Duration) (string, *Claims, error) {
+func GenerateToken(secretKey *rsa.PrivateKey, user dto.UserResponse, duration time.Duration) (string, *Claims, error) {
 	claims, err := NewClaims(user, duration)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to create claims: %w", err)

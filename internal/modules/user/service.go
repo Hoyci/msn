@@ -15,16 +15,16 @@ import (
 )
 
 type ServiceConfig struct {
-	UserRepo     Repository
+	UserRepo     UserRepository
 	CategoryRepo Categories.Repository
 }
 
 type service struct {
-	userRepo     Repository
+	userRepo     UserRepository
 	categoryRepo Categories.Repository
 }
 
-func NewService(c ServiceConfig) Service {
+func NewUserService(c ServiceConfig) UserService {
 	return &service{
 		userRepo:     c.UserRepo,
 		categoryRepo: c.CategoryRepo,
@@ -92,7 +92,7 @@ func (s service) CreateUser(ctx context.Context, input dto.CreateUser) (*dto.Use
 		}
 	}
 
-	newUser, err := New(input.Name, input.Email, input.Password, input.ConfirmPassword, userRole.Id, input.AvatarUrl, input.SubcategoryID)
+	newUser, err := New(input.Name, input.Email, input.Password, input.ConfirmPassword, userRole.ID, input.AvatarUrl, input.SubcategoryID)
 	if err != nil {
 		logger.DebugContext(ctx, "invalid_user_entity",
 			"email", input.Email,

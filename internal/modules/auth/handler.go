@@ -15,24 +15,24 @@ import (
 )
 
 var (
-	instance *handler
-	Once     sync.Once
+	authHandlerInstance *handler
+	Once                sync.Once
 )
 
 type handler struct {
-	authService Service
+	authService AuthService
 	accessKey   *rsa.PrivateKey
 }
 
-func NewHandler(authService Service, accessKey *rsa.PrivateKey) *handler {
+func NewHandler(authService AuthService, accessKey *rsa.PrivateKey) *handler {
 	Once.Do(func() {
-		instance = &handler{
+		authHandlerInstance = &handler{
 			authService: authService,
 			accessKey:   accessKey,
 		}
 	})
 
-	return instance
+	return authHandlerInstance
 }
 
 func (h handler) RegisterRoutes(r *chi.Mux) {

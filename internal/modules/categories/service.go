@@ -11,17 +11,17 @@ type ServiceConfig struct {
 	CategoriesRepo Repository
 }
 
-type service struct {
+type categoryService struct {
 	categoriesRepo Repository
 }
 
 func NewService(c ServiceConfig) Service {
-	return &service{
+	return &categoryService{
 		categoriesRepo: c.CategoriesRepo,
 	}
 }
 
-func (s *service) GetCategories(ctx context.Context, includeSubs bool) ([]*dto.Category, error) {
+func (s *categoryService) GetCategories(ctx context.Context, includeSubs bool) ([]*dto.Category, error) {
 	logger := logging.FromContext(ctx)
 
 	logger.DebugContext(
