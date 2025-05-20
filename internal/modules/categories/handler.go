@@ -1,7 +1,7 @@
 package categories
 
 import (
-	"fmt"
+	"msn/pkg/common/dto"
 	"msn/pkg/common/fault"
 	"msn/pkg/utils/httputils"
 	"net/http"
@@ -37,26 +37,15 @@ func (h handler) RegisterRoutes(r *chi.Mux) {
 
 func (h handler) handleGetCategories(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	include := r.URL.Query().Get("include")
-	fmt.Println(include)
+	includeSubs := r.URL.Query().Get("include") == "subcategories"
 
-	switch include {
-	case "subcategories":
-		res, err := h.categoriesService.GetCategoriesWithSubcategories(ctx)
-		if err != nil {
-			fault.NewHTTPError(w, err)
-			return
-		}
-		httputils.WriteJSON(w, http.StatusOK, res)
-		return
-
-	default:
-		res, err := h.categoriesService.GetCategoriesWithUserCount(ctx)
-		if err != nil {
-			fault.NewHTTPError(w, err)
-			return
-		}
-		httputils.WriteJSON(w, http.StatusOK, res)
+	categories, err := h.categoriesService.GetCategories(ctx, includeSubs)
+	if err != nil {
+		fault.NewHTTPError(w, err)
 		return
 	}
+
+	httputils.WriteJSON(w, http.StatusOK, map[string][]*dto.Category{
+		"categories": categories,
+	})
 }
