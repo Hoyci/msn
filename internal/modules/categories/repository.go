@@ -21,22 +21,42 @@ func NewRepo(db *sqlx.DB) Repository {
 	return &repo{db: db}
 }
 
-func (r repo) GetCategoriesWithUserCount(ctx context.Context) ([]*dto.CategoryWithUserCount, error) {
+func (r repo) GetSubcategoryByID(ctx context.Context, categoryID string) (*model.Subcategory, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	var categories []*dto.CategoryWithUserCount
+	var subcategory model.Subcategory
+	err := r.db.GetContext(ctx, &subcategory, "SELECT * FROM subcategories WHERE id = $1", categoryID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fault.New("failed to retrieve subcategory by id", fault.WithError(err))
+	}
+
+	return &subcategory, nil
+}
+
+func (r repo) GetCategories(ctx context.Context) ([]*dto.Category, error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	var categories []*dto.Category
 	err := r.db.SelectContext(
 		ctx,
 		&categories,
-		`SELECT 
-			c.*,
-  		COUNT(u.id) AS subcategories_user_count
+		`
+		SELECT 
+			c.id,
+			c.name,
+			c.icon,
+			COUNT(DISTINCT u.id) as users
 		FROM categories c
 		LEFT JOIN subcategories s ON s.category_id = c.id
 		LEFT JOIN users u ON u.subcategory_id = s.id
 		GROUP BY c.id
-		ORDER BY subcategories_user_count DESC;`,
+		ORDER BY users DESC
+		`,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -48,69 +68,59 @@ func (r repo) GetCategoriesWithUserCount(ctx context.Context) ([]*dto.CategoryWi
 	return categories, nil
 }
 
-func (r repo) GetCategoriesWithSubcategories(ctx context.Context) ([]*dto.CategoryWithSubcategories, error) {
-	rows, err := r.db.QueryxContext(ctx, `
-		SELECT
-			c.id,
-			c.name,
-			c.icon,
-			c.created_at,
-			c.updated_at,
-			c.deleted_at,
-			COALESCE(
-				JSON_AGG(
-					json_build_object('id', s.id, 'name', s.name)
-				) FILTER (WHERE s.deleted_at IS NULL),
-				'[]'
-			) AS subcategories
-		FROM categories c
-		LEFT JOIN subcategories s ON s.category_id = c.id
-		WHERE c.deleted_at IS NULL
-		GROUP BY c.id, c.name, c.icon, c.created_at, c.updated_at, c.deleted_at
-		ORDER BY c.name ASC;`,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var result []*dto.CategoryWithSubcategories
-	for rows.Next() {
-		var cat dto.CategoryWithSubcategories
-		var raw []byte
-		if err := rows.Scan(
-			&cat.ID,
-			&cat.Name,
-			&cat.Icon,
-			&cat.CreatedAt,
-			&cat.UpdatedAt,
-			&cat.DeletedAt,
-			&raw,
-		); err != nil {
-			return nil, err
-		}
-
-		if err := json.Unmarshal(raw, &cat.Subcategories); err != nil {
-			return nil, err
-		}
-
-		result = append(result, &cat)
-	}
-	return result, nil
-}
-
-func (r repo) GetSubcategoryByID(ctx context.Context, ID string) (*model.Subcategory, error) {
+func (r repo) GetWithSubs(ctx context.Context) ([]*dto.Category, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	var subcategory model.Subcategory
-	err := r.db.GetContext(ctx, &subcategory, "SELECT * FROM subcategories WHERE id = $1", ID)
+	var categories []*dto.Category
+	rows, err := r.db.QueryxContext(
+		ctx,
+		`SELECT
+			c.id,
+			c.name,
+			c.icon,
+			COALESCE(
+				JSON_AGG(
+					json_build_object('id', s.id, 'name', s.name)
+					ORDER BY s.name
+				) FILTER (WHERE s.deleted_at IS NULL),
+				'[]'
+		) AS subs
+		FROM categories c
+		LEFT JOIN subcategories s ON s.category_id = c.id
+		GROUP BY c.id`,
+	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fault.New("failed to retrieve subcategory by id", fault.WithError(err))
+		return nil, fault.New("failed to retrieve categories with subs", fault.WithError(err))
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var category dto.Category
+		var rawSubs []byte
+
+		if err := rows.Scan(
+			&category.ID,
+			&category.Name,
+			&category.Icon,
+			&rawSubs,
+		); err != nil {
+			return nil, fault.New("failed to scan category", fault.WithError(err))
+		}
+
+		if err := json.Unmarshal(rawSubs, &category.Subs); err != nil {
+			return nil, fault.New("failed to unmarshal subcategories", fault.WithError(err))
+		}
+
+		categories = append(categories, &category)
 	}
 
-	return &subcategory, nil
+	if err := rows.Err(); err != nil {
+		return nil, fault.New("error during rows iteration", fault.WithError(err))
+	}
+
+	return categories, nil
 }
