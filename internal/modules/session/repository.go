@@ -19,14 +19,14 @@ func NewRepo(db *sqlx.DB) SessionRepository {
 	return &sessionRepository{db: db}
 }
 
-func (r *sessionRepository) GetAllByUserID(ctx context.Context, userID string) ([]model.Session, error) {
+func (r *sessionRepository) GetAllByUserID(ctx context.Context, userID string) ([]*Session, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	sessions := make([]model.Session, 0)
+	dbSessions := make([]model.Session, 0)
 	err := r.db.SelectContext(
 		ctx,
-		&sessions,
+		&dbSessions,
 		"SELECT * FROM sessions WHERE user_id = $1 ORDER BY created_at DESC",
 		userID,
 	)
@@ -34,10 +34,23 @@ func (r *sessionRepository) GetAllByUserID(ctx context.Context, userID string) (
 		return nil, fault.New("failed to retrieve sessions by user ID", fault.WithError(err))
 	}
 
-	return sessions, nil
+	result := make([]*Session, len(dbSessions))
+	for i, ms := range dbSessions {
+		result[i] = &Session{
+			id:        ms.ID,
+			userID:    ms.UserID,
+			jti:       ms.JTI,
+			active:    ms.Active,
+			createdAt: ms.CreatedAt,
+			updatedAt: ms.UpdatedAt,
+			expiresAt: ms.ExpiresAt,
+		}
+	}
+
+	return result, nil
 }
 
-func (r *sessionRepository) GetActiveByUserID(ctx context.Context, userID string) (*model.Session, error) {
+func (r *sessionRepository) GetActiveByUserID(ctx context.Context, userID string) (*Session, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -58,10 +71,10 @@ func (r *sessionRepository) GetActiveByUserID(ctx context.Context, userID string
 		)
 	}
 
-	return &session, nil
+	return NewFromModel(session), nil
 }
 
-func (r *sessionRepository) GetByJTI(ctx context.Context, JTI string) (*model.Session, error) {
+func (r *sessionRepository) GetByJTI(ctx context.Context, JTI string) (*Session, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -79,12 +92,14 @@ func (r *sessionRepository) GetByJTI(ctx context.Context, JTI string) (*model.Se
 		return nil, fault.New("failed to retrieve session by JTI", fault.WithError(err))
 	}
 
-	return &session, nil
+	return NewFromModel(session), nil
 }
 
-func (r *sessionRepository) Insert(ctx context.Context, session model.Session) error {
+func (r *sessionRepository) Create(ctx context.Context, session *Session) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
+
+	modelSession := session.ToModel()
 
 	query := `
 		INSERT INTO sessions (
@@ -106,7 +121,7 @@ func (r *sessionRepository) Insert(ctx context.Context, session model.Session) e
 		)
 	`
 
-	_, err := r.db.NamedExecContext(ctx, query, session)
+	_, err := r.db.NamedExecContext(ctx, query, modelSession)
 	if err != nil {
 		return fault.New("failed to insert session", fault.WithError(err))
 	}
@@ -114,10 +129,11 @@ func (r *sessionRepository) Insert(ctx context.Context, session model.Session) e
 	return nil
 }
 
-func (r *sessionRepository) Update(ctx context.Context, session model.Session) error {
+func (r *sessionRepository) Update(ctx context.Context, session *Session) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
+	modelSession := session.ToModel()
 	query := `
 		UPDATE sessions
 		SET
@@ -127,7 +143,7 @@ func (r *sessionRepository) Update(ctx context.Context, session model.Session) e
 		WHERE id = :id
 	`
 
-	_, err := r.db.NamedExecContext(ctx, query, session)
+	_, err := r.db.NamedExecContext(ctx, query, modelSession)
 	if err != nil {
 		return fault.New("failed to update session", fault.WithError(err))
 	}

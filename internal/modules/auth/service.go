@@ -2,15 +2,13 @@ package auth
 
 import (
 	"context"
-	"crypto/rsa"
 	"msn/internal/infra/http/middleware"
-	"msn/internal/infra/http/token"
+	token "msn/internal/infra/http/token"
 	"msn/internal/infra/logging"
 	"msn/internal/modules/session"
 	"msn/internal/modules/user"
 	"msn/pkg/common/dto"
 	"msn/pkg/common/fault"
-	"msn/pkg/utils/crypto"
 	"net/http"
 	"time"
 )
@@ -21,129 +19,119 @@ const (
 )
 
 type ServiceConfig struct {
-	AccessKey  *rsa.PrivateKey
-	RefreshKey *rsa.PrivateKey
-
-	UserRepo    user.UserRepository
-	SessionRepo session.SessionRepository
-
+	UserRepo       user.UserRepository
 	SessionService session.SessionService
+	TokenProvider  TokenProvider
 }
 
-type authService struct {
+type service struct {
 	userRepo       user.UserRepository
-	sessionRepo    session.SessionRepository
 	sessionService session.SessionService
-
-	AccessKey  *rsa.PrivateKey
-	RefreshKey *rsa.PrivateKey
+	tokenProvider  TokenProvider
 }
 
 func NewAuthService(c ServiceConfig) AuthService {
-	return &authService{
+	return &service{
 		userRepo:       c.UserRepo,
-		sessionRepo:    c.SessionRepo,
 		sessionService: c.SessionService,
-		AccessKey:      c.AccessKey,
-		RefreshKey:     c.RefreshKey,
+		tokenProvider:  c.TokenProvider,
 	}
 }
 
-func (s authService) Login(ctx context.Context, email, password string) (*dto.LoginResponse, error) {
+func (s *service) Login(ctx context.Context, email string, password string) (*dto.LoginResponse, error) {
 	logger := logging.FromContext(ctx)
 
 	logger.DebugContext(ctx, "login_attempt", "email", email)
 
-	userRecord, err := s.userRepo.GetByEmail(ctx, email)
+	err := ValidateCredentials(email, password)
+	if err != nil {
+		return nil, fault.New(
+			"invalid user data",
+			fault.WithTag(fault.BAD_REQUEST),
+			fault.WithHTTPCode(http.StatusBadRequest),
+			fault.WithError(err),
+		)
+	}
+
+	user, err := s.userRepo.GetByEmail(ctx, email)
 	if err != nil {
 		logger.ErrorContext(ctx, "db_error",
 			"operation", "userRepo.GetByEmail",
 			"error", err,
 		)
-		return nil, fault.NewBadRequest("failed to get user by email")
+		return nil, fault.New(
+			"failed to get user",
+			fault.WithTag(fault.DB_RESOURCE_NOT_FOUND),
+			fault.WithHTTPCode(http.StatusInternalServerError),
+			fault.WithError(err),
+		)
 	}
 
-	if userRecord == nil {
+	if user == nil {
 		logger.DebugContext(ctx, "user_not_found", "email", email)
 		return nil, fault.NewUnauthorized("invalid credentials")
 	}
 
-	if !crypto.PasswordMatches(password, userRecord.Password) {
-		logger.DebugContext(ctx, "invalid_password",
-			"user_id", userRecord.ID,
-			"email", email,
-		)
-		return nil, fault.NewUnauthorized("invalid credentials")
-	}
-
-	if userRecord.DeletedAt != nil {
-		logger.WarnContext(ctx, "disabled_user_login_attempt",
-			"user_id", userRecord.ID,
-			"email", email,
-		)
-
-		return nil, fault.New(
-			"user must be active to login",
-			fault.WithHTTPCode(http.StatusUnauthorized),
-			fault.WithTag(fault.DISABLED_USER),
-		)
-	}
-
-	user := dto.UserResponse{
-		ID:        userRecord.ID,
-		Name:      userRecord.Name,
-		Email:     userRecord.Email,
-		AvatarURL: userRecord.AvatarURL,
-		CreatedAt: userRecord.CreatedAt,
-		UpdatedAt: userRecord.UpdatedAt,
-	}
-
-	err = s.sessionRepo.DeactivateAll(ctx, userRecord.ID)
+	err = ValidateUser(email, password, user)
 	if err != nil {
-		logger.ErrorContext(ctx, "db_error",
-			"operation", "sessionRepo.DeactivateAll",
-			"error", err,
+		logger.DebugContext(ctx, "failed_validate_user", "email", email, "error", err)
+		return nil, fault.New(
+			"failed to validate user",
+			fault.WithTag(fault.UNAUTHORIZED),
+			fault.WithHTTPCode(http.StatusUnauthorized),
+			fault.WithError(err),
 		)
-		return nil, fault.NewBadRequest("failed to deactivate user sessions")
 	}
 
-	accessToken, _, err := token.GenerateToken(s.AccessKey, user, AccessTokenDuration)
+	err = s.sessionService.DeactivateAllSessions(ctx, user.ID())
+	if err != nil {
+		return nil, fault.New(
+			"failed to deactivate user sessions",
+			fault.WithTag(fault.INTERNAL_SERVER_ERROR),
+			fault.WithHTTPCode(http.StatusInternalServerError),
+			fault.WithError(err),
+		)
+	}
+	userResponse := dto.UserResponse{
+		ID:            user.ID(),
+		Name:          user.Name(),
+		Email:         user.Email(),
+		AvatarURL:     user.AvatarURL(),
+		UserRoleID:    user.UserRoleID(),
+		SubcategoryID: user.SubcategoryID(),
+		CreatedAt:     user.CreatedAt(),
+	}
+
+	accessToken, _, err := s.tokenProvider.GenerateAccessToken(userResponse)
 	if err != nil {
 		logger.ErrorContext(ctx, "access_token_generation_failed", "error", err)
 		return nil, fault.NewInternalServerError("failed to login")
 	}
-
-	refreshToken, refreshTokenClaims, err := token.GenerateToken(s.RefreshKey, user, RefreshTokenDuration)
+	refreshToken, refreshTokenClaims, err := s.tokenProvider.GenerateRefreshToken(userResponse)
 	if err != nil {
 		logger.ErrorContext(ctx, "refresh_token_generation_failed", "error", err)
 		return nil, fault.NewInternalServerError("failed to login")
 	}
 
-	session, err := s.sessionService.CreateSession(
-		ctx,
-		dto.CreateSession{
-			UserID: userRecord.ID,
-			JTI:    refreshTokenClaims.ID,
-		},
-	)
+	session, err := s.sessionService.CreateSession(ctx, dto.CreateSession{UserID: userResponse.ID, JTI: refreshTokenClaims.ID})
 	if err != nil {
-		logger.ErrorContext(ctx, "session_creation_failed", "error", err)
-		return nil, err
+		logger.ErrorContext(ctx, "session_generation_failed", "error", err)
+		return nil, fault.NewInternalServerError("failed to login")
 	}
 
 	logger.InfoContext(ctx, "login_successful",
-		"user_id", userRecord.ID,
+		"user_id", user.ID,
 		"session_id", session.ID,
 	)
 
 	return &dto.LoginResponse{
-		SessionID:    session.ID,
+		SessionID:    session.ID(),
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
 }
 
-func (s authService) Logout(ctx context.Context) error {
+func (s *service) Logout(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
 
 	c, ok := ctx.Value(middleware.AuthKey{}).(*token.Claims)
@@ -157,91 +145,90 @@ func (s authService) Logout(ctx context.Context) error {
 		"jti", c.ID,
 	)
 
-	sessRecord, err := s.sessionRepo.GetActiveByUserID(ctx, c.User.ID)
+	activeSession, err := s.sessionService.GetActiveSessionByUserID(ctx, c.User.ID)
 	if err != nil {
-		logger.ErrorContext(ctx, "db_error",
-			"operation", "sessionRepo.GetActiveByUserID",
+		logger.ErrorContext(ctx, "sessionServiceError",
+			"operation", "GetActiveSessionByUserID",
 			"user_id", c.User.ID,
-			"error", err,
+			"error", err.Error(),
 		)
 		return fault.NewBadRequest("failed to retrieve active session")
 	}
 
-	if sessRecord == nil {
+	if activeSession == nil {
 		logger.WarnContext(ctx, "no_active_session",
 			"user_id", c.User.ID,
 		)
 		return fault.NewNotFound("active session not found")
 	}
 
-	sess := session.NewFromModel(*sessRecord)
-	sess.Deactivate()
+	activeSession.Deactivate()
 
-	err = s.sessionRepo.Update(ctx, sess.Model())
+	sess, err := s.sessionService.UpdateSession(ctx, activeSession)
 	if err != nil {
-		logger.ErrorContext(ctx, "db_error",
-			"operation", "sessionRepo.Update",
-			"session_id", sess.ID,
-			"error", err,
+		logger.ErrorContext(ctx, "sessionServiceError",
+			"operation", "UpdateSession",
+			"error", err.Error(),
 		)
-		return fault.NewBadRequest("failed to deactivate session")
+		return fault.NewInternalServerError("failed to login")
 	}
 
 	logger.InfoContext(ctx, "logout_success",
 		"user_id", c.User.ID,
 		"session_id", sess.ID,
 	)
-
 	return nil
 }
 
-func (s authService) RenewAccessToken(ctx context.Context, refreshToken string) (*dto.RenewTokenResponse, error) {
-	logger := logging.FromContext(ctx)
-
-	logger.DebugContext(ctx, "token_renewal_attempt",
-		"token_prefix", "refresh_"+refreshToken[:6])
-
-	claims, err := token.Verify(s.RefreshKey, refreshToken)
-	if err != nil {
-		logger.ErrorContext(ctx, "invalid_refresh_token",
-			"error", err,
-		)
-		return nil, fault.NewUnauthorized("invalid refresh token")
-	}
-
-	sessionRecord, err := s.sessionRepo.GetByJTI(ctx, claims.ID)
-	if err != nil || sessionRecord == nil || !sessionRecord.Active {
-		logger.WarnContext(ctx, "invalid_session",
-			"jti", claims.ID,
-			"active", sessionRecord != nil && sessionRecord.Active,
-			"error", err,
-		)
-		return nil, fault.NewBadRequest("invalid or inactive session")
-	}
-
-	if sessionRecord.ExpiresAt.Before(time.Now()) {
-		logger.WarnContext(ctx, "expired_session",
-			"session_id", sessionRecord.ID,
-			"expires_at", sessionRecord.ExpiresAt,
-		)
-		return nil, fault.NewUnauthorized("session expired")
-	}
-
-	accessToken, _, err := token.GenerateToken(s.AccessKey, claims.User, AccessTokenDuration)
-	if err != nil {
-		logger.ErrorContext(ctx, "access_token_generation_failed",
-			"user_id", claims.User.ID,
-			"error", err,
-		)
-		return nil, fault.NewInternalServerError("failed to generate access token")
-	}
-
-	logger.InfoContext(ctx, "token_renewed",
-		"user_id", claims.User.ID,
-		"session_id", sessionRecord.ID,
-	)
-
-	return &dto.RenewTokenResponse{
-		AccessToken: accessToken,
-	}, nil
-}
+// func (s *authService) RenewAccessToken(ctx context.Context, refreshToken string) (*dto.RenewTokenResponse, error) {
+// 	logger := logging.FromContext(ctx)
+// 	logger.DebugContext(ctx, "token_renewal_attempt",
+//
+// 		"token_prefix", "refresh_"+refreshToken[:6])
+//
+// 	claims, err := token.Verify(s.RefreshKey, refreshToken)
+// 	if err != nil {
+// 		logger.ErrorContext(ctx, "invalid_refresh_token",
+// 			"error", err,
+// 		)
+// 		return nil, fault.NewUnauthorized("invalid refresh token")
+// 	}
+//
+// 	sessionRecord, err := s.sessionRepo.GetByJTI(ctx, claims.ID)
+//
+// 	if err != nil || sessionRecord == nil || !sessionRecord.Active {
+// 		logger.WarnContext(ctx, "invalid_session",
+// 			"jti", claims.ID,
+// 			"active", sessionRecord != nil && sessionRecord.Active,
+// 			"error", err,
+// 		)
+// 		return nil, fault.NewBadRequest("invalid or inactive session")
+// 	}
+//
+// 	if sessionRecord.ExpiresAt.Before(time.Now()) {
+// 		logger.WarnContext(ctx, "expired_session",
+// 			"session_id", sessionRecord.ID,
+// 			"expires_at", sessionRecord.ExpiresAt,
+// 		)
+// 		return nil, fault.NewUnauthorized("session expired")
+// 	}
+//
+// 	accessToken, _, err := token.GenerateToken(s.AccessKey, claims.User, AccessTokenDuration)
+// 	if err != nil {
+// 		logger.ErrorContext(ctx, "access_token_generation_failed",
+// 			"user_id", claims.User.ID,
+// 			"error", err,
+// 		)
+// 		return nil, fault.NewInternalServerError("failed to generate access token")
+// 	}
+//
+// 	logger.InfoContext(ctx, "token_renewed",
+//
+// 		"user_id", claims.User.ID,
+// 		"session_id", sessionRecord.ID,
+// 	)
+//
+// 	return &dto.RenewTokenResponse{
+// 		AccessToken: accessToken,
+// 	}, nil
+// }
