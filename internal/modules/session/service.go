@@ -24,29 +24,43 @@ func NewSessionService(c ServiceConfig) SessionService {
 	}
 }
 
-func (s service) CreateSession(ctx context.Context, input dto.CreateSession) (*dto.SessionResponse, error) {
-	userRecord, err := s.userService.GetUserByID(ctx, input.UserID)
-	if err != nil {
-		return nil, err
-	}
-	userID := userRecord.ID
-
-	sess, err := New(userID, input.JTI)
+func (s service) CreateSession(ctx context.Context, input dto.CreateSession) (*Session, error) {
+	sess, err := New(input.UserID, input.JTI)
 	if err != nil {
 		return nil, fault.NewUnprocessableEntity("failed to create session entity")
 	}
 
-	err = s.sessionRepo.Insert(ctx, sess.Model())
+	err = s.sessionRepo.Create(ctx, sess)
 	if err != nil {
 		return nil, fault.NewBadRequest("failed to insert session entity")
 	}
 
-	res := dto.SessionResponse{
-		ID:        sess.ID,
-		Active:    sess.Active,
-		CreatedAt: sess.CreatedAt,
-		UpdatedAt: sess.UpdatedAt,
+	return sess, nil
+}
+
+func (s service) DeactivateAllSessions(ctx context.Context, userID string) error {
+	err := s.sessionRepo.DeactivateAll(ctx, userID)
+	if err != nil {
+		return fault.NewBadRequest("failed to deactivate all user sessions")
 	}
 
-	return &res, nil
+	return nil
+}
+
+func (s service) GetActiveSessionByUserID(ctx context.Context, userID string) (*Session, error) {
+	sess, err := s.sessionRepo.GetActiveByUserID(ctx, userID)
+	if err != nil {
+		return nil, fault.NewBadRequest("failed to get activer user sessions")
+	}
+
+	return sess, nil
+}
+
+func (s service) UpdateSession(ctx context.Context, session *Session) (*Session, error) {
+	err := s.sessionRepo.Update(ctx, session)
+	if err != nil {
+		return nil, fault.NewBadRequest("failed to update session")
+	}
+
+	return session, nil
 }

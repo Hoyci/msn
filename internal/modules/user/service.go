@@ -39,70 +39,23 @@ func (s service) CreateUser(ctx context.Context, input dto.CreateUser) (*dto.Use
 		"name", input.Name,
 	)
 
-	userRecord, err := s.userRepo.GetByEmail(ctx, input.Email)
+	user, err := New(
+		input.Name,
+		input.Email,
+		input.Password,
+		input.ConfirmPassword,
+		input.UserRoleID,
+		input.AvatarUrl,
+		input.SubcategoryID,
+		s.userRepo,
+		s.categoryRepo,
+	)
 	if err != nil {
-		logger.ErrorContext(ctx, "db_error",
-			"operation", "userRepo.GetByEmail",
-			"email", input.Email,
-			"error", err,
-		)
-		return nil, fault.NewBadRequest("failed to validate email")
-	}
-
-	if userRecord != nil {
-		logger.DebugContext(ctx, "email_conflict",
-			"email", input.Email,
-		)
-		return nil, fault.NewConflict("e-mail already taken")
-	}
-
-	userRole, err := s.userRepo.GetUserRoleByName(ctx, input.UserRole)
-	if err != nil {
-		logger.ErrorContext(ctx, "get_user_role_error",
-			"operation", "userRepo.GetUserRoleByName",
-			"email", input.UserRole,
-			"error", err,
-		)
-		if userRole == nil {
-			return nil, fault.NewBadRequest("user role not found")
-		}
-		return nil, fault.NewInternalServerError("failed to get user role")
-	}
-
-	if userRole.Name == "client" && input.SubcategoryID != nil {
-		return nil, fault.NewUnprocessableEntity("clients cannot have subcategories")
-	}
-
-	if userRole.Name == "professional" && input.SubcategoryID == nil {
-		return nil, fault.NewUnprocessableEntity("professionals must provide a subcategory")
-	}
-
-	if input.SubcategoryID != nil {
-		subcategory, err := s.categoryRepo.GetSubcategoryByID(ctx, *input.SubcategoryID)
-		if err != nil {
-			logger.ErrorContext(ctx, "get_subcategory_by_id",
-				"operation", "categoryRepo.GetSubcategoryByID",
-				"id", input.SubcategoryID,
-				"error", err,
-			)
-			return nil, fault.NewInternalServerError("failed to get subcategory")
-		}
-		if subcategory == nil {
-			return nil, fault.NewBadRequest("subcategory not found")
-		}
-	}
-
-	newUser, err := New(input.Name, input.Email, input.Password, input.ConfirmPassword, userRole.ID, input.AvatarUrl, input.SubcategoryID)
-	if err != nil {
-		logger.DebugContext(ctx, "invalid_user_entity",
-			"email", input.Email,
-			"error", err,
-		)
+		logger.DebugContext(ctx, "invalid user entity", "error", err)
 		return nil, fault.NewUnprocessableEntity(err.Error())
 	}
 
-	model := newUser.Model()
-	if err = s.userRepo.Insert(ctx, model); err != nil {
+	if err = s.userRepo.Create(ctx, user); err != nil {
 		logger.ErrorContext(ctx, "db_error",
 			"operation", "userRepo.Insert",
 			"email", input.Email,
@@ -123,67 +76,57 @@ func (s service) CreateUser(ctx context.Context, input dto.CreateUser) (*dto.Use
 	}
 
 	logger.InfoContext(ctx, "user_created",
-		"user_id", model.ID,
-		"email", model.Email,
+		"user_id", user.ID(),
+		"email", user.Email(),
 	)
 
 	return &dto.UserResponse{
-		ID:            model.ID,
-		Name:          model.Name,
-		Email:         model.Email,
-		UserRoleID:    model.UserRoleID,
-		SubcategoryID: model.SubcategoryID,
-		AvatarURL:     model.AvatarURL,
-		CreatedAt:     model.CreatedAt,
-		UpdatedAt:     model.UpdatedAt,
-		DeletedAt:     model.DeletedAt,
+		ID:            user.ID(),
+		Name:          user.Name(),
+		Email:         user.Email(),
+		UserRoleID:    user.UserRoleID(),
+		SubcategoryID: user.SubcategoryID(),
+		AvatarURL:     user.AvatarURL(),
+		CreatedAt:     user.CreatedAt(),
 	}, nil
 }
 
 func (s service) GetUserByEmail(ctx context.Context, email string) (*dto.UserResponse, error) {
-	userRecord, err := s.userRepo.GetByEmail(ctx, email)
+	user, err := s.userRepo.GetByEmail(ctx, email)
 	if err != nil {
 		return nil, fault.NewBadRequest("failed to retrieve user")
 	}
-	if userRecord == nil {
+	if user == nil {
 		return nil, fault.NewNotFound("user not found")
 	}
 
-	user := dto.UserResponse{
-		ID:            userRecord.ID,
-		Name:          userRecord.Name,
-		Email:         userRecord.Email,
-		AvatarURL:     userRecord.AvatarURL,
-		UserRoleID:    userRecord.UserRoleID,
-		SubcategoryID: userRecord.SubcategoryID,
-		CreatedAt:     userRecord.CreatedAt,
-		UpdatedAt:     userRecord.UpdatedAt,
-		DeletedAt:     userRecord.DeletedAt,
-	}
-
-	return &user, nil
+	return &dto.UserResponse{
+		ID:            user.ID(),
+		Name:          user.Name(),
+		Email:         user.Email(),
+		UserRoleID:    user.UserRoleID(),
+		SubcategoryID: user.SubcategoryID(),
+		AvatarURL:     user.AvatarURL(),
+		CreatedAt:     user.CreatedAt(),
+	}, nil
 }
 
 func (s service) GetUserByID(ctx context.Context, userId string) (*dto.UserResponse, error) {
-	userRecord, err := s.userRepo.GetByID(ctx, userId)
+	user, err := s.userRepo.GetByID(ctx, userId)
 	if err != nil {
 		return nil, fault.NewBadRequest("failed to retrieve user")
 	}
-	if userRecord == nil {
+	if user == nil {
 		return nil, fault.NewNotFound("user not found")
 	}
 
-	user := dto.UserResponse{
-		ID:            userRecord.ID,
-		Name:          userRecord.Name,
-		Email:         userRecord.Email,
-		UserRoleID:    userRecord.UserRoleID,
-		SubcategoryID: userRecord.SubcategoryID,
-		AvatarURL:     userRecord.AvatarURL,
-		CreatedAt:     userRecord.CreatedAt,
-		UpdatedAt:     userRecord.UpdatedAt,
-		DeletedAt:     userRecord.DeletedAt,
-	}
-
-	return &user, nil
+	return &dto.UserResponse{
+		ID:            user.ID(),
+		Name:          user.Name(),
+		Email:         user.Email(),
+		UserRoleID:    user.UserRoleID(),
+		SubcategoryID: user.SubcategoryID(),
+		AvatarURL:     user.AvatarURL(),
+		CreatedAt:     user.CreatedAt(),
+	}, nil
 }

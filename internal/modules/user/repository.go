@@ -45,12 +45,12 @@ func NewRepo(db *sqlx.DB) UserRepository {
 // 	return nil
 // }
 
-func (r userRepo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
+func (r userRepo) GetByEmail(ctx context.Context, email string) (*User, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	var user model.User
-	err := r.db.GetContext(ctx, &user, "SELECT * FROM users WHERE email = $1", email)
+	var modelUser model.User
+	err := r.db.GetContext(ctx, &modelUser, "SELECT * FROM users WHERE email = $1", email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -58,15 +58,15 @@ func (r userRepo) GetByEmail(ctx context.Context, email string) (*model.User, er
 		return nil, fault.New("failed to retrieve user by email", fault.WithError(err))
 	}
 
-	return &user, nil
+	return NewFromModel(modelUser), nil
 }
 
-func (r userRepo) GetByID(ctx context.Context, userId string) (*model.User, error) {
+func (r userRepo) GetByID(ctx context.Context, userId string) (*User, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	var user model.User
-	err := r.db.GetContext(ctx, &user, "SELECT * FROM users WHERE id = $1 LIMIT 1", userId)
+	var modelUser model.User
+	err := r.db.GetContext(ctx, &modelUser, "SELECT * FROM users WHERE id = $1 LIMIT 1", userId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -74,12 +74,14 @@ func (r userRepo) GetByID(ctx context.Context, userId string) (*model.User, erro
 		return nil, fault.New("failed to retrieve user", fault.WithError(err))
 	}
 
-	return &user, nil
+	return NewFromModel(modelUser), nil
 }
 
-func (r userRepo) Insert(ctx context.Context, user model.User) error {
+func (r userRepo) Create(ctx context.Context, user *User) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
+
+	modelUser := user.ToModel()
 
 	query := `
 		INSERT INTO users (
@@ -107,7 +109,7 @@ func (r userRepo) Insert(ctx context.Context, user model.User) error {
 		)
 	`
 
-	_, err := r.db.NamedExecContext(ctx, query, user)
+	_, err := r.db.NamedExecContext(ctx, query, modelUser)
 	if err != nil {
 		return fault.New("failed to insert user", fault.WithError(err))
 	}
@@ -115,7 +117,7 @@ func (r userRepo) Insert(ctx context.Context, user model.User) error {
 	return nil
 }
 
-func (r userRepo) GetUserRoleByName(ctx context.Context, name string) (*model.UserRole, error) {
+func (r userRepo) GetUserRoleByID(ctx context.Context, ID string) (*model.UserRole, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -123,12 +125,12 @@ func (r userRepo) GetUserRoleByName(ctx context.Context, name string) (*model.Us
 		SELECT
 			*
 		FROM user_roles ur
-		WHERE ur.name = $1
+		WHERE ur.id = $1
 		AND ur.deleted_at IS NULL;
 	`
 
 	var userRole model.UserRole
-	err := r.db.GetContext(ctx, &userRole, query, name)
+	err := r.db.GetContext(ctx, &userRole, query, ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -137,4 +139,14 @@ func (r userRepo) GetUserRoleByName(ctx context.Context, name string) (*model.Us
 	}
 
 	return &userRole, nil
+}
+
+func (r userRepo) RoleExists(ctx context.Context, roleID string) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS(SELECT 1 FROM user_roles WHERE id = $1 AND deleted_at IS NULL)`
+	err := r.db.GetContext(ctx, &exists, query, roleID)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
 }

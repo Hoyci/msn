@@ -2,17 +2,16 @@ package user
 
 import (
 	"context"
-	"msn/internal/infra/database/model"
 	"msn/pkg/common/dto"
 )
 
 type UserRepository interface {
-	Insert(ctx context.Context, user model.User) error
+	Create(ctx context.Context, user *User) error
 	// Update(ctx context.Context, user model.User) error
-	GetByID(ctx context.Context, userId string) (*model.User, error)
-	GetByEmail(ctx context.Context, email string) (*model.User, error)
+	GetByID(ctx context.Context, userId string) (*User, error)
+	GetByEmail(ctx context.Context, email string) (*User, error)
 	// Delete(ctx context.Context, userId string) error
-	GetUserRoleByName(ctx context.Context, name string) (*model.UserRole, error)
+	RoleExists(ctx context.Context, roleID string) (bool, error)
 }
 
 type UserService interface {
