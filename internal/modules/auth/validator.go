@@ -4,38 +4,17 @@ import (
 	user "msn/internal/modules/user"
 	"msn/pkg/common/fault"
 	"msn/pkg/utils/crypto"
+	"msn/pkg/utils/validation"
 	"net/http"
-	"net/mail"
-	"unicode"
 )
 
 func ValidateCredentials(email, password string) error {
-	if _, err := mail.ParseAddress(email); err != nil {
-		return fault.NewBadRequest("invalid email format")
+	if err := validation.ValidateEmail(email); err != nil {
+		return fault.NewBadRequest(err.Error())
 	}
-
-	if len(password) < 8 {
-		return fault.NewBadRequest("password must be at least 8 characters")
+	if err := validation.ValidatePassword(password); err != nil {
+		return fault.NewBadRequest(err.Error())
 	}
-
-	var hasUpper, hasLower, hasNumber, hasSymbol bool
-	for _, c := range password {
-		switch {
-		case unicode.IsUpper(c):
-			hasUpper = true
-		case unicode.IsLower(c):
-			hasLower = true
-		case unicode.IsNumber(c):
-			hasNumber = true
-		case unicode.IsSymbol(c), unicode.IsPunct(c):
-			hasSymbol = true
-		}
-	}
-
-	if !hasUpper || !hasLower || !hasNumber || !hasSymbol {
-		return fault.NewBadRequest("password must contain uppercase, lowercase, numbers and symbol")
-	}
-
 	return nil
 }
 

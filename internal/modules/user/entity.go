@@ -7,9 +7,8 @@ import (
 	"msn/pkg/common/fault"
 	"msn/pkg/utils/crypto"
 	"msn/pkg/utils/uid"
-	"net/mail"
+	"msn/pkg/utils/validation"
 	"time"
-	"unicode"
 )
 
 type User struct {
@@ -119,8 +118,8 @@ func (u *User) validate() error {
 	if u.name == "" {
 		return fault.NewBadRequest("user name is required")
 	}
-	if _, err := mail.ParseAddress(u.email); err != nil {
-		return fault.NewBadRequest("invalid email format")
+	if err := validation.ValidateEmail(u.email); err != nil {
+		return fault.NewBadRequest(err.Error())
 	}
 	if u.password == "" {
 		return fault.NewBadRequest("password is required")
@@ -128,24 +127,8 @@ func (u *User) validate() error {
 	if u.password != u.confirmPassword {
 		return fault.NewBadRequest("password and confirmation do not match")
 	}
-	if len(u.password) < 8 {
-		return fault.NewBadRequest("password must be at least 8 characters")
-	}
-	var hasUpper, hasLower, hasNumber, hasSymbol bool
-	for _, c := range u.password {
-		switch {
-		case unicode.IsUpper(c):
-			hasUpper = true
-		case unicode.IsLower(c):
-			hasLower = true
-		case unicode.IsNumber(c):
-			hasNumber = true
-		case unicode.IsSymbol(c), unicode.IsPunct(c):
-			hasSymbol = true
-		}
-	}
-	if !hasUpper || !hasLower || !hasNumber || !hasSymbol {
-		return fault.NewBadRequest("password must contain uppercase, lowercase, numbers and symbol")
+	if err := validation.ValidatePassword(u.password); err != nil {
+		return fault.NewBadRequest(err.Error())
 	}
 	if u.userRoleID == "" {
 		return fault.NewBadRequest("user role is required")
