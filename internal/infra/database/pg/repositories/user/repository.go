@@ -1,10 +1,11 @@
-package user
+package userRepository
 
 import (
 	"context"
 	"database/sql"
 	"errors"
 	"msn/internal/infra/database/model"
+	"msn/internal/modules/user"
 	"msn/pkg/common/fault"
 	"time"
 
@@ -15,7 +16,7 @@ type userRepo struct {
 	db *sqlx.DB
 }
 
-func NewRepo(db *sqlx.DB) UserRepository {
+func NewRepo(db *sqlx.DB) user.UserRepository {
 	return &userRepo{db: db}
 }
 
@@ -45,7 +46,7 @@ func NewRepo(db *sqlx.DB) UserRepository {
 // 	return nil
 // }
 
-func (r userRepo) GetByEmail(ctx context.Context, email string) (*User, error) {
+func (r userRepo) GetByEmail(ctx context.Context, email string) (*user.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -58,10 +59,10 @@ func (r userRepo) GetByEmail(ctx context.Context, email string) (*User, error) {
 		return nil, fault.New("failed to retrieve user by email", fault.WithError(err))
 	}
 
-	return NewFromModel(modelUser), nil
+	return user.NewFromModel(modelUser), nil
 }
 
-func (r userRepo) GetByID(ctx context.Context, userId string) (*User, error) {
+func (r userRepo) GetByID(ctx context.Context, userId string) (*user.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -74,10 +75,10 @@ func (r userRepo) GetByID(ctx context.Context, userId string) (*User, error) {
 		return nil, fault.New("failed to retrieve user", fault.WithError(err))
 	}
 
-	return NewFromModel(modelUser), nil
+	return user.NewFromModel(modelUser), nil
 }
 
-func (r userRepo) Create(ctx context.Context, user *User) error {
+func (r userRepo) Create(ctx context.Context, user *user.User) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 

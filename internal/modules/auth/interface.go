@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	token "msn/internal/infra/http/token"
+	"msn/internal/infra/jwt"
 	"msn/pkg/common/dto"
 )
 
@@ -13,9 +13,9 @@ type AuthService interface {
 }
 
 type TokenProvider interface {
-	GenerateAccessToken(user dto.UserResponse) (string, *token.Claims, error)
-	GenerateRefreshToken(user dto.UserResponse) (string, *token.Claims, error)
-	VerifyRefreshToken(token string) (*token.Claims, error)
+	GenerateAccessToken(user dto.UserResponse) (string, *jwt.Claims, error)
+	GenerateRefreshToken(user dto.UserResponse) (string, *jwt.Claims, error)
+	VerifyRefreshToken(token string) (*jwt.Claims, error)
 }
 
 type SessionManager interface {

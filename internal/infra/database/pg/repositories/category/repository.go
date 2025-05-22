@@ -1,4 +1,4 @@
-package categories
+package categoryRepository
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"msn/internal/infra/database/model"
+	"msn/internal/modules/category"
 	"msn/pkg/common/dto"
 	"msn/pkg/common/fault"
 	"time"
@@ -17,7 +18,7 @@ type repo struct {
 	db *sqlx.DB
 }
 
-func NewRepo(db *sqlx.DB) Repository {
+func NewRepo(db *sqlx.DB) category.Repository {
 	return &repo{db: db}
 }
 

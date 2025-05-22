@@ -7,11 +7,18 @@ import (
 	"log/slog"
 	"msn/internal/config"
 	"msn/internal/infra/database/pg"
-	"msn/internal/infra/http/middleware"
+	categoryRepository "msn/internal/infra/database/pg/repositories/category"
+	sessionRepository "msn/internal/infra/database/pg/repositories/session"
+	userRepository "msn/internal/infra/database/pg/repositories/user"
+	authHandler "msn/internal/infra/http/handlers/auth"
+	categoryhandler "msn/internal/infra/http/handlers/category"
+	userHandler "msn/internal/infra/http/handlers/user"
+	"msn/internal/infra/http/middlewares"
 	"msn/internal/infra/http/server"
+	"msn/internal/infra/jwt"
 	"msn/internal/infra/logging"
 	"msn/internal/modules/auth"
-	"msn/internal/modules/categories"
+	"msn/internal/modules/category"
 	"msn/internal/modules/session"
 	"msn/internal/modules/user"
 	"net/http"
@@ -36,7 +43,7 @@ func main() {
 	ctx := context.Background()
 	router := chi.NewRouter()
 
-	router.Use(middleware.Logging)
+	router.Use(middlewares.Logging)
 
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000"},
@@ -53,32 +60,32 @@ func main() {
 	}
 	defer pgConn.Close()
 
-	userRepo := user.NewRepo(pgConn.DB())
-	sessionRepo := session.NewRepo(pgConn.DB())
-	categoriesRepo := categories.NewRepo(pgConn.DB())
+	userRepo := userRepository.NewRepo(pgConn.DB())
+	categoryRepo := categoryRepository.NewRepo(pgConn.DB())
+	sessionRepo := sessionRepository.NewRepo(pgConn.DB())
 
-	tokenProvider := auth.NewJWTTokenProvider(cfg.JWTAccessKey, cfg.JWTRefreshKey)
+	tokenProvider := jwt.NewProvider(cfg.JWTAccessKey, cfg.JWTRefreshKey)
 
-	userService := user.NewUserService(user.ServiceConfig{
+	userService := user.NewService(user.ServiceConfig{
 		UserRepo:     userRepo,
-		CategoryRepo: categoriesRepo,
+		CategoryRepo: categoryRepo,
 	})
-	sessionService := session.NewSessionService(session.ServiceConfig{
+	sessionService := session.NewService(session.ServiceConfig{
 		SessionRepo: sessionRepo,
 		UserService: userService,
 	})
-	authService := auth.NewAuthService(auth.ServiceConfig{
+	authService := auth.NewService(auth.ServiceConfig{
 		UserRepo:       userRepo,
 		SessionService: sessionService,
-		TokenProvider:  tokenProvider,
+		TokenProvider:  *tokenProvider,
 	})
-	categoriesService := categories.NewService(categories.ServiceConfig{
-		CategoriesRepo: categoriesRepo,
+	categoryService := category.NewService(category.ServiceConfig{
+		CategoryRepo: categoryRepo,
 	})
 
-	user.NewHandler(userService).RegisterRoutes(router)
-	auth.NewHandler(authService, cfg.JWTAccessKey).RegisterRoutes(router)
-	categories.NewHandler(categoriesService).RegisterRoutes(router)
+	authHandler.NewHandler(authService, cfg.JWTAccessKey).RegisterRoutes(router)
+	userHandler.NewHandler(userService).RegisterRoutes(router)
+	categoryhandler.NewHandler(categoryService).RegisterRoutes(router)
 
 	srv := server.New(server.Config{
 		Port:         cfg.Port,

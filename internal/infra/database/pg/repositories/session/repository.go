@@ -1,10 +1,11 @@
-package session
+package sessionRepository
 
 import (
 	"context"
 	"database/sql"
 	"errors"
 	"msn/internal/infra/database/model"
+	"msn/internal/modules/session"
 	"msn/pkg/common/fault"
 	"time"
 
@@ -15,11 +16,11 @@ type sessionRepository struct {
 	db *sqlx.DB
 }
 
-func NewRepo(db *sqlx.DB) SessionRepository {
+func NewRepo(db *sqlx.DB) session.SessionRepository {
 	return &sessionRepository{db: db}
 }
 
-func (r *sessionRepository) GetAllByUserID(ctx context.Context, userID string) ([]*Session, error) {
+func (r *sessionRepository) GetAllByUserID(ctx context.Context, userID string) ([]*session.Session, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -34,30 +35,22 @@ func (r *sessionRepository) GetAllByUserID(ctx context.Context, userID string) (
 		return nil, fault.New("failed to retrieve sessions by user ID", fault.WithError(err))
 	}
 
-	result := make([]*Session, len(dbSessions))
+	result := make([]*session.Session, len(dbSessions))
 	for i, ms := range dbSessions {
-		result[i] = &Session{
-			id:        ms.ID,
-			userID:    ms.UserID,
-			jti:       ms.JTI,
-			active:    ms.Active,
-			createdAt: ms.CreatedAt,
-			updatedAt: ms.UpdatedAt,
-			expiresAt: ms.ExpiresAt,
-		}
+		result[i] = session.NewFromModel(ms)
 	}
 
 	return result, nil
 }
 
-func (r *sessionRepository) GetActiveByUserID(ctx context.Context, userID string) (*Session, error) {
+func (r *sessionRepository) GetActiveByUserID(ctx context.Context, userID string) (*session.Session, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	var session model.Session
+	var sessionModel model.Session
 	err := r.db.GetContext(
 		ctx,
-		&session,
+		&sessionModel,
 		"SELECT * FROM sessions WHERE user_id = $1 AND active = true LIMIT 1",
 		userID,
 	)
@@ -71,17 +64,17 @@ func (r *sessionRepository) GetActiveByUserID(ctx context.Context, userID string
 		)
 	}
 
-	return NewFromModel(session), nil
+	return session.NewFromModel(sessionModel), nil
 }
 
-func (r *sessionRepository) GetByJTI(ctx context.Context, JTI string) (*Session, error) {
+func (r *sessionRepository) GetByJTI(ctx context.Context, JTI string) (*session.Session, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	var session model.Session
+	var sessionModel model.Session
 	err := r.db.GetContext(
 		ctx,
-		&session,
+		&sessionModel,
 		"SELECT * FROM sessions WHERE jti = $1",
 		JTI,
 	)
@@ -92,10 +85,10 @@ func (r *sessionRepository) GetByJTI(ctx context.Context, JTI string) (*Session,
 		return nil, fault.New("failed to retrieve session by JTI", fault.WithError(err))
 	}
 
-	return NewFromModel(session), nil
+	return session.NewFromModel(sessionModel), nil
 }
 
-func (r *sessionRepository) Create(ctx context.Context, session *Session) error {
+func (r *sessionRepository) Create(ctx context.Context, session *session.Session) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -129,7 +122,7 @@ func (r *sessionRepository) Create(ctx context.Context, session *Session) error 
 	return nil
 }
 
-func (r *sessionRepository) Update(ctx context.Context, session *Session) error {
+func (r *sessionRepository) Update(ctx context.Context, session *session.Session) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
