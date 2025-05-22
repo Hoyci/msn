@@ -5,26 +5,26 @@ import (
 	"errors"
 	"fmt"
 	"msn/internal/infra/logging"
+	"msn/internal/modules/category"
 	"msn/pkg/common/dto"
 	"msn/pkg/common/fault"
+	"msn/pkg/common/valueobjects"
 	"msn/pkg/utils/dbutil"
-
-	Categories "msn/internal/modules/categories"
 
 	"github.com/lib/pq"
 )
 
 type ServiceConfig struct {
 	UserRepo     UserRepository
-	CategoryRepo Categories.Repository
+	CategoryRepo category.Repository
 }
 
 type service struct {
 	userRepo     UserRepository
-	categoryRepo Categories.Repository
+	categoryRepo category.Repository
 }
 
-func NewUserService(c ServiceConfig) UserService {
+func NewService(c ServiceConfig) UserService {
 	return &service{
 		userRepo:     c.UserRepo,
 		categoryRepo: c.CategoryRepo,
@@ -39,16 +39,34 @@ func (s service) CreateUser(ctx context.Context, input dto.CreateUser) (*dto.Use
 		"name", input.Name,
 	)
 
+	existing, err := s.userRepo.GetByEmail(context.Background(), input.Email)
+	if err != nil {
+		return nil, fault.NewInternalServerError("failed to validate email")
+	}
+	if existing != nil {
+		return nil, fault.NewConflict("email already taken")
+	}
+
+	exists, err := s.userRepo.RoleExists(context.Background(), input.UserRoleID)
+	if err != nil {
+		return nil, fault.NewInternalServerError("failed to validate user role")
+	}
+	if !exists {
+		return nil, fault.NewBadRequest("invalid user role")
+	}
+
+	password, err := valueobjects.NewPassword(input.Password)
+	if err != nil {
+		return nil, fault.NewBadRequest(err.Error())
+	}
+
 	user, err := New(
 		input.Name,
 		input.Email,
-		input.Password,
-		input.ConfirmPassword,
+		password.Hash,
 		input.UserRoleID,
 		input.AvatarUrl,
 		input.SubcategoryID,
-		s.userRepo,
-		s.categoryRepo,
 	)
 	if err != nil {
 		logger.DebugContext(ctx, "invalid user entity", "error", err)
@@ -76,18 +94,18 @@ func (s service) CreateUser(ctx context.Context, input dto.CreateUser) (*dto.Use
 	}
 
 	logger.InfoContext(ctx, "user_created",
-		"user_id", user.ID(),
-		"email", user.Email(),
+		"user_id", user.ID,
+		"email", user.Email,
 	)
 
 	return &dto.UserResponse{
-		ID:            user.ID(),
-		Name:          user.Name(),
-		Email:         user.Email(),
-		UserRoleID:    user.UserRoleID(),
-		SubcategoryID: user.SubcategoryID(),
-		AvatarURL:     user.AvatarURL(),
-		CreatedAt:     user.CreatedAt(),
+		ID:            user.ID,
+		Name:          user.Name,
+		Email:         user.Email,
+		UserRoleID:    user.UserRoleID,
+		SubcategoryID: user.SubcategoryID,
+		AvatarURL:     user.AvatarURL,
+		CreatedAt:     user.CreatedAt,
 	}, nil
 }
 
@@ -101,13 +119,13 @@ func (s service) GetUserByEmail(ctx context.Context, email string) (*dto.UserRes
 	}
 
 	return &dto.UserResponse{
-		ID:            user.ID(),
-		Name:          user.Name(),
-		Email:         user.Email(),
-		UserRoleID:    user.UserRoleID(),
-		SubcategoryID: user.SubcategoryID(),
-		AvatarURL:     user.AvatarURL(),
-		CreatedAt:     user.CreatedAt(),
+		ID:            user.ID,
+		Name:          user.Name,
+		Email:         user.Email,
+		UserRoleID:    user.UserRoleID,
+		SubcategoryID: user.SubcategoryID,
+		AvatarURL:     user.AvatarURL,
+		CreatedAt:     user.CreatedAt,
 	}, nil
 }
 
@@ -121,12 +139,12 @@ func (s service) GetUserByID(ctx context.Context, userId string) (*dto.UserRespo
 	}
 
 	return &dto.UserResponse{
-		ID:            user.ID(),
-		Name:          user.Name(),
-		Email:         user.Email(),
-		UserRoleID:    user.UserRoleID(),
-		SubcategoryID: user.SubcategoryID(),
-		AvatarURL:     user.AvatarURL(),
-		CreatedAt:     user.CreatedAt(),
+		ID:            user.ID,
+		Name:          user.Name,
+		Email:         user.Email,
+		UserRoleID:    user.UserRoleID,
+		SubcategoryID: user.SubcategoryID,
+		AvatarURL:     user.AvatarURL,
+		CreatedAt:     user.CreatedAt,
 	}, nil
 }

@@ -17,7 +17,7 @@ type service struct {
 	userService user.UserService
 }
 
-func NewSessionService(c ServiceConfig) SessionService {
+func NewService(c ServiceConfig) SessionService {
 	return &service{
 		sessionRepo: c.SessionRepo,
 		userService: c.UserService,

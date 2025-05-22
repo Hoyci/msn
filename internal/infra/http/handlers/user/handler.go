@@ -1,6 +1,7 @@
-package user
+package userHandler
 
 import (
+	"msn/internal/modules/user"
 	"msn/pkg/common/dto"
 	"msn/pkg/common/fault"
 	"msn/pkg/utils/httputils"
@@ -11,31 +12,31 @@ import (
 )
 
 var (
-	instance *handler
+	instance *UserHandler
 	Once     sync.Once
 )
 
-type handler struct {
-	userService UserService
+type UserHandler struct {
+	userService user.UserService
 }
 
-func NewHandler(userService UserService) *handler {
+func NewHandler(userService user.UserService) *UserHandler {
 	Once.Do(func() {
-		instance = &handler{
+		instance = &UserHandler{
 			userService: userService,
 		}
 	})
 	return instance
 }
 
-func (h handler) RegisterRoutes(r *chi.Mux) {
+func (h UserHandler) RegisterRoutes(r *chi.Mux) {
 	r.Route("/api/v1/users", func(r chi.Router) {
 		// Public
 		r.Post("/register", h.handleRegister)
 	})
 }
 
-func (h handler) handleRegister(w http.ResponseWriter, r *http.Request) {
+func (h UserHandler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var body dto.CreateUser

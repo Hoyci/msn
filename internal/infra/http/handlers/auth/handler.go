@@ -1,9 +1,11 @@
-package auth
+package authHandler
 
 import (
 	"crypto/rsa"
-	"msn/internal/infra/http/middleware"
+	"msn/internal/infra/http/middlewares"
+	"msn/internal/infra/jwt"
 	"msn/internal/infra/logging"
+	"msn/internal/modules/auth"
 	"msn/pkg/common/dto"
 	"msn/pkg/common/fault"
 	"msn/pkg/utils/httputils"
@@ -14,18 +16,18 @@ import (
 )
 
 var (
-	authHandlerInstance *handler
+	authHandlerInstance *AuthHandler
 	Once                sync.Once
 )
 
-type handler struct {
-	authService AuthService
+type AuthHandler struct {
+	authService auth.AuthService
 	accessKey   *rsa.PrivateKey
 }
 
-func NewHandler(authService AuthService, accessKey *rsa.PrivateKey) *handler {
+func NewHandler(authService auth.AuthService, accessKey *rsa.PrivateKey) *AuthHandler {
 	Once.Do(func() {
-		authHandlerInstance = &handler{
+		authHandlerInstance = &AuthHandler{
 			authService: authService,
 			accessKey:   accessKey,
 		}
@@ -34,8 +36,8 @@ func NewHandler(authService AuthService, accessKey *rsa.PrivateKey) *handler {
 	return authHandlerInstance
 }
 
-func (h handler) RegisterRoutes(r *chi.Mux) {
-	m := middleware.NewWithAuth(h.accessKey)
+func (h AuthHandler) RegisterRoutes(r *chi.Mux) {
+	m := middlewares.NewWithAuth(h.accessKey)
 	r.Route("/api/v1/auth", func(r chi.Router) {
 		// Private
 		r.With(m.WithAuth).Patch("/logout", h.handleLogout)
@@ -46,7 +48,7 @@ func (h handler) RegisterRoutes(r *chi.Mux) {
 	})
 }
 
-func (h handler) handleLogin(w http.ResponseWriter, r *http.Request) {
+func (h AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := logging.FromContext(ctx)
 
@@ -72,14 +74,14 @@ func (h handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		Secure:   true,
 		SameSite: http.SameSiteNoneMode,
 		Path:     "/",
-		MaxAge:   int(RefreshTokenDuration.Seconds()),
+		MaxAge:   int(jwt.RefreshTokenDuration.Seconds()),
 	})
 
 	logger.InfoContext(ctx, "login_success")
 	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
-func (h handler) handleLogout(w http.ResponseWriter, r *http.Request) {
+func (h AuthHandler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	err := h.authService.Logout(ctx)
 	if err != nil {
@@ -101,7 +103,7 @@ func (h handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 //
-// func (h handler) handleRenewToken(w http.ResponseWriter, r *http.Request) {
+// func (h AuthHandler) handleRenewToken(w http.ResponseWriter, r *http.Request) {
 // 	ctx := r.Context()
 //
 // 	fmt.Println("r.Cookie", r.Cookies())

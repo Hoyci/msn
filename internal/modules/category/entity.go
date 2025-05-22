@@ -1,4 +1,4 @@
-package categories
+package category
 
 import (
 	"msn/internal/infra/database/model"

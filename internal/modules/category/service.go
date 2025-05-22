@@ -1,4 +1,4 @@
-package categories
+package category
 
 import (
 	"context"
@@ -8,16 +8,16 @@ import (
 )
 
 type ServiceConfig struct {
-	CategoriesRepo Repository
+	CategoryRepo Repository
 }
 
 type categoryService struct {
-	categoriesRepo Repository
+	categoryRepo Repository
 }
 
 func NewService(c ServiceConfig) Service {
 	return &categoryService{
-		categoriesRepo: c.CategoriesRepo,
+		categoryRepo: c.CategoryRepo,
 	}
 }
 
@@ -31,7 +31,7 @@ func (s *categoryService) GetCategories(ctx context.Context, includeSubs bool) (
 	)
 
 	if includeSubs {
-		records, err := s.categoriesRepo.GetWithSubs(ctx)
+		records, err := s.categoryRepo.GetWithSubs(ctx)
 		if err != nil {
 			logger.ErrorContext(ctx, "db_error",
 				"operation", "categoriesRepo.GetWithSubs",
@@ -43,7 +43,7 @@ func (s *categoryService) GetCategories(ctx context.Context, includeSubs bool) (
 		return records, nil
 	}
 
-	records, err := s.categoriesRepo.GetCategories(ctx)
+	records, err := s.categoryRepo.GetCategories(ctx)
 	if err != nil {
 		logger.ErrorContext(ctx, "db_error",
 			"operation", "categoriesRepo.GetWithSubs",

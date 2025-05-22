@@ -1,6 +1,7 @@
-package categories
+package categoryRepository
 
 import (
+	"msn/internal/modules/category"
 	"msn/pkg/common/dto"
 	"msn/pkg/common/fault"
 	"msn/pkg/utils/httputils"
@@ -16,10 +17,10 @@ var (
 )
 
 type handler struct {
-	categoriesService Service
+	categoriesService category.Service
 }
 
-func NewHandler(categoriesService Service) *handler {
+func NewHandler(categoriesService category.Service) *handler {
 	Once.Do(func() {
 		categoryHandlerInstance = &handler{
 			categoriesService: categoriesService,

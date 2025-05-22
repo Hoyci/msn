@@ -19,11 +19,11 @@ func ValidateCredentials(email, password string) error {
 }
 
 func ValidateUser(email, password string, user *user.User) error {
-	if !crypto.PasswordMatches(password, user.Password()) {
+	if !crypto.PasswordMatches(password, user.Password) {
 		return fault.NewUnauthorized("invalid credentials")
 	}
 
-	if user.DeletedAt() != nil {
+	if user.DeletedAt != nil {
 		return fault.New(
 			"user must be active to login",
 			fault.WithHTTPCode(http.StatusUnauthorized),

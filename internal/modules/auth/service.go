@@ -2,35 +2,29 @@ package auth
 
 import (
 	"context"
-	"msn/internal/infra/http/middleware"
-	token "msn/internal/infra/http/token"
+	"msn/internal/infra/http/middlewares"
+	"msn/internal/infra/jwt"
 	"msn/internal/infra/logging"
 	"msn/internal/modules/session"
 	"msn/internal/modules/user"
 	"msn/pkg/common/dto"
 	"msn/pkg/common/fault"
 	"net/http"
-	"time"
-)
-
-const (
-	AccessTokenDuration  = time.Minute * 2
-	RefreshTokenDuration = time.Hour * 24 * 30
 )
 
 type ServiceConfig struct {
 	UserRepo       user.UserRepository
 	SessionService session.SessionService
-	TokenProvider  TokenProvider
+	TokenProvider  jwt.JWTProvider
 }
 
 type service struct {
 	userRepo       user.UserRepository
 	sessionService session.SessionService
-	tokenProvider  TokenProvider
+	tokenProvider  jwt.JWTProvider
 }
 
-func NewAuthService(c ServiceConfig) AuthService {
+func NewService(c ServiceConfig) AuthService {
 	return &service{
 		userRepo:       c.UserRepo,
 		sessionService: c.SessionService,
@@ -83,7 +77,7 @@ func (s *service) Login(ctx context.Context, email string, password string) (*dt
 		)
 	}
 
-	err = s.sessionService.DeactivateAllSessions(ctx, user.ID())
+	err = s.sessionService.DeactivateAllSessions(ctx, user.ID)
 	if err != nil {
 		return nil, fault.New(
 			"failed to deactivate user sessions",
@@ -93,13 +87,13 @@ func (s *service) Login(ctx context.Context, email string, password string) (*dt
 		)
 	}
 	userResponse := dto.UserResponse{
-		ID:            user.ID(),
-		Name:          user.Name(),
-		Email:         user.Email(),
-		AvatarURL:     user.AvatarURL(),
-		UserRoleID:    user.UserRoleID(),
-		SubcategoryID: user.SubcategoryID(),
-		CreatedAt:     user.CreatedAt(),
+		ID:            user.ID,
+		Name:          user.Name,
+		Email:         user.Email,
+		AvatarURL:     user.AvatarURL,
+		UserRoleID:    user.UserRoleID,
+		SubcategoryID: user.SubcategoryID,
+		CreatedAt:     user.CreatedAt,
 	}
 
 	accessToken, _, err := s.tokenProvider.GenerateAccessToken(userResponse)
@@ -125,7 +119,7 @@ func (s *service) Login(ctx context.Context, email string, password string) (*dt
 	)
 
 	return &dto.LoginResponse{
-		SessionID:    session.ID(),
+		SessionID:    session.ID,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
@@ -134,7 +128,7 @@ func (s *service) Login(ctx context.Context, email string, password string) (*dt
 func (s *service) Logout(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
 
-	c, ok := ctx.Value(middleware.AuthKey{}).(*token.Claims)
+	c, ok := ctx.Value(middlewares.AuthKey{}).(*jwt.Claims)
 	if !ok {
 		logger.ErrorContext(ctx, "missing_auth_context")
 		return fault.NewUnauthorized("access token not provided")

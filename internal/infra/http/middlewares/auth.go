@@ -1,9 +1,9 @@
-package middleware
+package middlewares
 
 import (
 	"context"
 	"crypto/rsa"
-	"msn/internal/infra/http/token"
+	"msn/internal/infra/jwt"
 	"msn/pkg/common/fault"
 	"net/http"
 	"strings"
@@ -30,7 +30,7 @@ func (m *middleware) WithAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		claims, err := token.Verify(m.accessKey, accessToken)
+		claims, err := jwt.Verify(m.accessKey, accessToken)
 		if err != nil {
 			if strings.Contains(err.Error(), "token has expired") {
 				fault.NewHTTPError(w, fault.NewUnauthorized("token has expired"))
