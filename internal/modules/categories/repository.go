@@ -124,3 +124,13 @@ func (r repo) GetWithSubs(ctx context.Context) ([]*dto.Category, error) {
 
 	return categories, nil
 }
+
+func (r repo) SubcategoryExists(ctx context.Context, subcategoryID string) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS(SELECT 1 FROM subcategories WHERE id = $1 AND deleted_at IS NULL)`
+	err := r.db.GetContext(ctx, &exists, query, subcategoryID)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}

@@ -2,7 +2,6 @@ package auth
 
 import (
 	"crypto/rsa"
-	"fmt"
 	"msn/internal/infra/http/middleware"
 	"msn/internal/infra/logging"
 	"msn/pkg/common/dto"
@@ -43,7 +42,7 @@ func (h handler) RegisterRoutes(r *chi.Mux) {
 
 		// Public
 		r.Post("/login", h.handleLogin)
-		r.Post("/refresh", h.handleRenewToken)
+		// r.Post("/refresh", h.handleRenewToken)
 	})
 }
 
@@ -101,22 +100,23 @@ func (h handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	httputils.WriteSuccess(w, http.StatusOK)
 }
 
-func (h handler) handleRenewToken(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	fmt.Println("r.Cookie", r.Cookies())
-
-	cookie, err := r.Cookie("refresh_token")
-	if err != nil {
-		fault.NewHTTPError(w, fault.NewUnauthorized("refresh token not found"))
-		return
-	}
-
-	res, err := h.authService.RenewAccessToken(ctx, cookie.Value)
-	if err != nil {
-		fault.NewHTTPError(w, err)
-		return
-	}
-
-	httputils.WriteJSON(w, http.StatusOK, res)
-}
+//
+// func (h handler) handleRenewToken(w http.ResponseWriter, r *http.Request) {
+// 	ctx := r.Context()
+//
+// 	fmt.Println("r.Cookie", r.Cookies())
+//
+// 	cookie, err := r.Cookie("refresh_token")
+// 	if err != nil {
+// 		fault.NewHTTPError(w, fault.NewUnauthorized("refresh token not found"))
+// 		return
+// 	}
+//
+// 	res, err := h.authService.RenewAccessToken(ctx, cookie.Value)
+// 	if err != nil {
+// 		fault.NewHTTPError(w, err)
+// 		return
+// 	}
+//
+// 	httputils.WriteJSON(w, http.StatusOK, res)
+// }

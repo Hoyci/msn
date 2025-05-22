@@ -57,6 +57,8 @@ func main() {
 	sessionRepo := session.NewRepo(pgConn.DB())
 	categoriesRepo := categories.NewRepo(pgConn.DB())
 
+	tokenProvider := auth.NewJWTTokenProvider(cfg.JWTAccessKey, cfg.JWTRefreshKey)
+
 	userService := user.NewUserService(user.ServiceConfig{
 		UserRepo:     userRepo,
 		CategoryRepo: categoriesRepo,
@@ -67,10 +69,8 @@ func main() {
 	})
 	authService := auth.NewAuthService(auth.ServiceConfig{
 		UserRepo:       userRepo,
-		SessionRepo:    sessionRepo,
 		SessionService: sessionService,
-		AccessKey:      cfg.JWTAccessKey,
-		RefreshKey:     cfg.JWTRefreshKey,
+		TokenProvider:  tokenProvider,
 	})
 	categoriesService := categories.NewService(categories.ServiceConfig{
 		CategoriesRepo: categoriesRepo,
