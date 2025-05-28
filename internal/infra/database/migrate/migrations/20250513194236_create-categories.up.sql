@@ -45,7 +45,7 @@ END;
 $$ LANGUAGE plpgsql STRICT;
 
 CREATE TABLE IF NOT EXISTS categories (
-  id          VARCHAR(255) PRIMARY KEY DEFAULT new_id('categories'),
+  id          VARCHAR(255) PRIMARY KEY DEFAULT new_id('category'),
   name        VARCHAR(255) NOT NULL UNIQUE,
   icon        TEXT,
   created_at  TIMESTAMP   NOT NULL DEFAULT NOW(),
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS categories (
 );
 
 CREATE TABLE IF NOT EXISTS subcategories (
-  id          VARCHAR(255) PRIMARY KEY DEFAULT new_id('subcategories'),
+  id          VARCHAR(255) PRIMARY KEY DEFAULT new_id('subcategory'),
   name        VARCHAR(255) NOT NULL,
   category_id VARCHAR(255) NOT NULL
                REFERENCES categories(id),

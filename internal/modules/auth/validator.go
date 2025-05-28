@@ -1,11 +1,11 @@
 package auth
 
 import (
-	user "msn/internal/modules/user"
 	"msn/pkg/common/fault"
 	"msn/pkg/utils/crypto"
 	"msn/pkg/utils/validation"
 	"net/http"
+	"time"
 )
 
 func ValidateCredentials(email, password string) error {
@@ -18,12 +18,12 @@ func ValidateCredentials(email, password string) error {
 	return nil
 }
 
-func ValidateUser(email, password string, user *user.User) error {
-	if !crypto.PasswordMatches(password, user.Password) {
+func ValidateUser(email, password, hashedPassword string, userDeletedAt *time.Time) error {
+	if !crypto.PasswordMatches(password, hashedPassword) {
 		return fault.NewUnauthorized("invalid credentials")
 	}
 
-	if user.DeletedAt != nil {
+	if userDeletedAt != nil {
 		return fault.New(
 			"user must be active to login",
 			fault.WithHTTPCode(http.StatusUnauthorized),

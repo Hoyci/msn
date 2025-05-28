@@ -47,9 +47,10 @@ func (s *service) Login(ctx context.Context, email string, password string) (*dt
 		)
 	}
 
-	user, err := s.userRepo.GetByEmail(ctx, email)
+	enrichedUser, err := s.userRepo.GetEnrichedByEmail(ctx, email)
 	if err != nil {
-		logger.ErrorContext(ctx, "db_error",
+		logger.ErrorContext(
+			ctx, "db_error",
 			"operation", "userRepo.GetByEmail",
 			"error", err,
 		)
@@ -61,12 +62,12 @@ func (s *service) Login(ctx context.Context, email string, password string) (*dt
 		)
 	}
 
-	if user == nil {
+	if enrichedUser == nil {
 		logger.DebugContext(ctx, "user_not_found", "email", email)
 		return nil, fault.NewUnauthorized("invalid credentials")
 	}
 
-	err = ValidateUser(email, password, user)
+	err = ValidateUser(email, password, enrichedUser.HashedPassword, enrichedUser.DeletedAt)
 	if err != nil {
 		logger.DebugContext(ctx, "failed_validate_user", "email", email, "error", err)
 		return nil, fault.New(
@@ -77,7 +78,7 @@ func (s *service) Login(ctx context.Context, email string, password string) (*dt
 		)
 	}
 
-	err = s.sessionService.DeactivateAllSessions(ctx, user.ID)
+	err = s.sessionService.DeactivateAllSessions(ctx, enrichedUser.ID)
 	if err != nil {
 		return nil, fault.New(
 			"failed to deactivate user sessions",
@@ -86,35 +87,29 @@ func (s *service) Login(ctx context.Context, email string, password string) (*dt
 			fault.WithError(err),
 		)
 	}
-	userResponse := dto.UserResponse{
-		ID:            user.ID,
-		Name:          user.Name,
-		Email:         user.Email,
-		AvatarURL:     user.AvatarURL,
-		UserRoleID:    user.UserRoleID,
-		SubcategoryID: user.SubcategoryID,
-		CreatedAt:     user.CreatedAt,
-	}
 
-	accessToken, _, err := s.tokenProvider.GenerateAccessToken(userResponse)
+	accessToken, _, err := s.tokenProvider.GenerateAccessToken(enrichedUser)
 	if err != nil {
 		logger.ErrorContext(ctx, "access_token_generation_failed", "error", err)
 		return nil, fault.NewInternalServerError("failed to login")
 	}
-	refreshToken, refreshTokenClaims, err := s.tokenProvider.GenerateRefreshToken(userResponse)
+	refreshToken, refreshTokenClaims, err := s.tokenProvider.GenerateRefreshToken(enrichedUser)
 	if err != nil {
 		logger.ErrorContext(ctx, "refresh_token_generation_failed", "error", err)
 		return nil, fault.NewInternalServerError("failed to login")
 	}
 
-	session, err := s.sessionService.CreateSession(ctx, dto.CreateSession{UserID: userResponse.ID, JTI: refreshTokenClaims.ID})
+	session, err := s.sessionService.CreateSession(
+		ctx, dto.CreateSession{UserID: enrichedUser.ID, JTI: refreshTokenClaims.ID},
+	)
 	if err != nil {
 		logger.ErrorContext(ctx, "session_generation_failed", "error", err)
 		return nil, fault.NewInternalServerError("failed to login")
 	}
 
-	logger.InfoContext(ctx, "login_successful",
-		"user_id", user.ID,
+	logger.InfoContext(
+		ctx, "login_successful",
+		"user_id", enrichedUser.ID,
 		"session_id", session.ID,
 	)
 
@@ -134,14 +129,16 @@ func (s *service) Logout(ctx context.Context) error {
 		return fault.NewUnauthorized("access token not provided")
 	}
 
-	logger.DebugContext(ctx, "logout_attempt",
+	logger.DebugContext(
+		ctx, "logout_attempt",
 		"user_id", c.User.ID,
 		"jti", c.ID,
 	)
 
 	activeSession, err := s.sessionService.GetActiveSessionByUserID(ctx, c.User.ID)
 	if err != nil {
-		logger.ErrorContext(ctx, "sessionServiceError",
+		logger.ErrorContext(
+			ctx, "sessionServiceError",
 			"operation", "GetActiveSessionByUserID",
 			"user_id", c.User.ID,
 			"error", err.Error(),
@@ -150,7 +147,8 @@ func (s *service) Logout(ctx context.Context) error {
 	}
 
 	if activeSession == nil {
-		logger.WarnContext(ctx, "no_active_session",
+		logger.WarnContext(
+			ctx, "no_active_session",
 			"user_id", c.User.ID,
 		)
 		return fault.NewNotFound("active session not found")
@@ -160,14 +158,16 @@ func (s *service) Logout(ctx context.Context) error {
 
 	sess, err := s.sessionService.UpdateSession(ctx, activeSession)
 	if err != nil {
-		logger.ErrorContext(ctx, "sessionServiceError",
+		logger.ErrorContext(
+			ctx, "sessionServiceError",
 			"operation", "UpdateSession",
 			"error", err.Error(),
 		)
 		return fault.NewInternalServerError("failed to login")
 	}
 
-	logger.InfoContext(ctx, "logout_success",
+	logger.InfoContext(
+		ctx, "logout_success",
 		"user_id", c.User.ID,
 		"session_id", sess.ID,
 	)

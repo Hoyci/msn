@@ -9,6 +9,7 @@ type Category struct {
 }
 
 type Subcategory struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	CategoryID string `json:"category_id"`
 }

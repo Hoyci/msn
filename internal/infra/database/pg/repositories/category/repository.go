@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"msn/internal/infra/database/model"
 	"msn/internal/modules/category"
 	"msn/pkg/common/dto"
 	"msn/pkg/common/fault"
@@ -20,22 +19,6 @@ type repo struct {
 
 func NewRepo(db *sqlx.DB) category.Repository {
 	return &repo{db: db}
-}
-
-func (r repo) GetSubcategoryByID(ctx context.Context, categoryID string) (*model.Subcategory, error) {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-
-	var subcategory model.Subcategory
-	err := r.db.GetContext(ctx, &subcategory, "SELECT * FROM subcategories WHERE id = $1", categoryID)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fault.New("failed to retrieve subcategory by id", fault.WithError(err))
-	}
-
-	return &subcategory, nil
 }
 
 func (r repo) GetCategories(ctx context.Context) ([]*dto.Category, error) {
@@ -69,7 +52,7 @@ func (r repo) GetCategories(ctx context.Context) ([]*dto.Category, error) {
 	return categories, nil
 }
 
-func (r repo) GetWithSubs(ctx context.Context) ([]*dto.Category, error) {
+func (r repo) GetCategoriesWithSubcategories(ctx context.Context) ([]*dto.Category, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -124,14 +107,4 @@ func (r repo) GetWithSubs(ctx context.Context) ([]*dto.Category, error) {
 	}
 
 	return categories, nil
-}
-
-func (r repo) SubcategoryExists(ctx context.Context, subcategoryID string) (bool, error) {
-	var exists bool
-	query := `SELECT EXISTS(SELECT 1 FROM subcategories WHERE id = $1 AND deleted_at IS NULL)`
-	err := r.db.GetContext(ctx, &exists, query, subcategoryID)
-	if err != nil {
-		return false, err
-	}
-	return exists, nil
 }

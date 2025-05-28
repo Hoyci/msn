@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"msn/internal/infra/database/model"
+	"fmt"
+	"msn/internal/infra/database/models"
 	"msn/internal/modules/user"
+	"msn/pkg/common/dto"
 	"msn/pkg/common/fault"
 	"time"
 
@@ -46,11 +48,73 @@ func NewRepo(db *sqlx.DB) user.UserRepository {
 // 	return nil
 // }
 
+func (r userRepo) GetEnrichedByEmail(ctx context.Context, email string) (*dto.EnrichedUserResponse, error) {
+	var out struct {
+		ID              string     `db:"id"`
+		Name            string     `db:"name"`
+		Email           string     `db:"email"`
+		AvatarURL       string     `db:"avatar_url"`
+		HashedPassword  string     `db:"password"`
+		CreatedAt       time.Time  `db:"created_at"`
+		DeletedAt       *time.Time `db:"deleted_at"`
+		RoleID          string     `db:"role_id"`
+		RoleName        string     `db:"role_name"`
+		SubcategoryID   *string    `db:"subcategory_id"`
+		SubcategoryName *string    `db:"subcategory_name"`
+		CategoryID      *string    `db:"category_id"`
+		CategoryName    *string    `db:"category_name"`
+		CategoryIcon    *string    `db:"category_icon"`
+	}
+
+	query := `
+    SELECT
+      u.id, u.name, u.email, u.avatar_url, u.password, u.created_at, u.deleted_at,
+      ur.id   AS role_id,          ur.name AS role_name,
+      s.id    AS subcategory_id,   s.name AS subcategory_name,
+      c.id    AS category_id,      c.name AS category_name, c.icon as category_icon
+    FROM users u
+    LEFT JOIN user_roles ur    ON ur.id = u.user_role_id
+    LEFT JOIN subcategories s  ON s.id  = u.subcategory_id
+    LEFT JOIN categories c     ON c.id  = s.category_id
+    WHERE u.email = $1
+    `
+	err := r.db.GetContext(ctx, &out, query, email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fault.New("failed to get enriched user", fault.WithError(err))
+	}
+
+	enrichedUser := &dto.EnrichedUserResponse{
+		ID:             out.ID,
+		Name:           out.Name,
+		Email:          out.Email,
+		AvatarURL:      out.AvatarURL,
+		HashedPassword: out.HashedPassword,
+		CreatedAt:      out.CreatedAt,
+		DeletedAt:      out.DeletedAt,
+		UserRole: &dto.UserRole{
+			ID:   out.RoleID,
+			Name: out.RoleName,
+		},
+	}
+
+	if out.SubcategoryID != nil {
+		enrichedUser.Subcategory = &dto.Subcategory{ID: *out.SubcategoryID, Name: *out.SubcategoryName}
+	}
+	if out.CategoryID != nil {
+		enrichedUser.Category = &dto.Category{ID: *out.CategoryID, Name: *out.CategoryName, Icon: *out.CategoryIcon}
+	}
+
+	return enrichedUser, nil
+}
+
 func (r userRepo) GetByEmail(ctx context.Context, email string) (*user.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	var modelUser model.User
+	var modelUser models.User
 	err := r.db.GetContext(ctx, &modelUser, "SELECT * FROM users WHERE email = $1", email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -66,7 +130,7 @@ func (r userRepo) GetByID(ctx context.Context, userId string) (*user.User, error
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	var modelUser model.User
+	var modelUser models.User
 	err := r.db.GetContext(ctx, &modelUser, "SELECT * FROM users WHERE id = $1 LIMIT 1", userId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -118,36 +182,61 @@ func (r userRepo) Create(ctx context.Context, user *user.User) error {
 	return nil
 }
 
-func (r userRepo) GetUserRoleByID(ctx context.Context, ID string) (*model.UserRole, error) {
+func (r userRepo) GetProfessionalUsers(ctx context.Context) ([]*dto.ProfessionalUserResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
+	var out []struct {
+		ID              string `db:"id"`
+		Name            string `db:"name"`
+		Email           string `db:"email"`
+		AvatarURL       string `db:"avatar_url"`
+		SubcategoryID   string `db:"subcategory_id"`
+		SubcategoryName string `db:"subcategory_name"`
+		CategoryID      string `db:"category_id"`
+	}
+
 	query := `
-		SELECT
-			*
-		FROM user_roles ur
-		WHERE ur.id = $1
-		AND ur.deleted_at IS NULL;
+		SELECT 
+			u.id,
+			u.name,
+			u.email,
+			u.avatar_url,
+			s.id as subcategory_id,
+			s."name" as subcategory_name,
+			s.category_id as category_id
+		FROM users u
+		LEFT JOIN user_roles ur ON ur.id = u.user_role_id
+		LEFT JOIN subcategories s ON s.id = u.subcategory_id
+		WHERE ur."name" = 'professional';
 	`
 
-	var userRole model.UserRole
-	err := r.db.GetContext(ctx, &userRole, query, ID)
+	err := r.db.SelectContext(ctx, &out, query)
 	if err != nil {
+		fmt.Println(err)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fault.New("failed to retrieve user", fault.WithError(err))
 	}
 
-	return &userRole, nil
-}
+	fmt.Println(out[0])
 
-func (r userRepo) RoleExists(ctx context.Context, roleID string) (bool, error) {
-	var exists bool
-	query := `SELECT EXISTS(SELECT 1 FROM user_roles WHERE id = $1 AND deleted_at IS NULL)`
-	err := r.db.GetContext(ctx, &exists, query, roleID)
-	if err != nil {
-		return false, err
+	var users []*dto.ProfessionalUserResponse
+
+	for _, u := range out {
+		users = append(users, &dto.ProfessionalUserResponse{
+			ID:        u.ID,
+			Name:      u.Name,
+			Email:     u.Email,
+			AvatarURL: u.AvatarURL,
+			Subcategory: &dto.Subcategory{
+				ID:         u.SubcategoryID,
+				Name:       u.SubcategoryName,
+				CategoryID: u.CategoryID,
+			},
+		})
 	}
-	return exists, nil
+
+	return users, nil
 }

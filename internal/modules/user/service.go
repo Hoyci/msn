@@ -4,8 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mime/multipart"
+	"msn/internal/config"
 	"msn/internal/infra/logging"
+	"msn/internal/infra/storage"
 	"msn/internal/modules/category"
+	userrole "msn/internal/modules/user_role"
 	"msn/pkg/common/dto"
 	"msn/pkg/common/fault"
 	"msn/pkg/common/valueobjects"
@@ -15,19 +19,25 @@ import (
 )
 
 type ServiceConfig struct {
-	UserRepo     UserRepository
-	CategoryRepo category.Repository
+	UserRepo      UserRepository
+	CategoryRepo  category.Repository
+	UserRoleRepo  userrole.Repository
+	StorageClient *storage.StorageClient
 }
 
 type service struct {
-	userRepo     UserRepository
-	categoryRepo category.Repository
+	userRepo      UserRepository
+	categoryRepo  category.Repository
+	userRoleRepo  userrole.Repository
+	storageClient *storage.StorageClient
 }
 
 func NewService(c ServiceConfig) UserService {
 	return &service{
-		userRepo:     c.UserRepo,
-		categoryRepo: c.CategoryRepo,
+		userRepo:      c.UserRepo,
+		categoryRepo:  c.CategoryRepo,
+		userRoleRepo:  c.UserRoleRepo,
+		storageClient: c.StorageClient,
 	}
 }
 
@@ -47,12 +57,9 @@ func (s service) CreateUser(ctx context.Context, input dto.CreateUser) (*dto.Use
 		return nil, fault.NewConflict("email already taken")
 	}
 
-	exists, err := s.userRepo.RoleExists(context.Background(), input.UserRoleID)
+	role, err := s.userRoleRepo.GetUserRoleByName(context.Background(), input.UserRole)
 	if err != nil {
 		return nil, fault.NewInternalServerError("failed to validate user role")
-	}
-	if !exists {
-		return nil, fault.NewBadRequest("invalid user role")
 	}
 
 	password, err := valueobjects.NewPassword(input.Password)
@@ -64,14 +71,20 @@ func (s service) CreateUser(ctx context.Context, input dto.CreateUser) (*dto.Use
 		input.Name,
 		input.Email,
 		password.Hash,
-		input.UserRoleID,
-		input.AvatarUrl,
+		role.ID,
 		input.SubcategoryID,
 	)
 	if err != nil {
 		logger.DebugContext(ctx, "invalid user entity", "error", err)
 		return nil, fault.NewUnprocessableEntity(err.Error())
 	}
+
+	avatarUrl, err := s.UploadUserPicture(ctx, user.ID, input.FileHeader)
+	if err != nil {
+		return nil, fault.NewInternalServerError(err.Error())
+	}
+
+	user.AvatarURL = avatarUrl
 
 	if err = s.userRepo.Create(ctx, user); err != nil {
 		logger.ErrorContext(ctx, "db_error",
@@ -147,4 +160,27 @@ func (s service) GetUserByID(ctx context.Context, userId string) (*dto.UserRespo
 		AvatarURL:     user.AvatarURL,
 		CreatedAt:     user.CreatedAt,
 	}, nil
+}
+
+func (s service) GetProfessionalUsers(ctx context.Context) ([]*dto.ProfessionalUserResponse, error) {
+	professionals, err := s.userRepo.GetProfessionalUsers(ctx)
+	if err != nil {
+		return nil, fault.NewBadRequest("failed to retrieve professional users")
+	}
+	if professionals == nil {
+		return nil, fault.NewNotFound("professional users not found")
+	}
+
+	return professionals, nil
+}
+
+func (s service) UploadUserPicture(ctx context.Context, userID string, fileHeader *multipart.FileHeader) (string, error) {
+	objectName := fmt.Sprintf("user_%s_%s", "profile", userID)
+	avatarKey, err := s.storageClient.UploadFile("user-profile", objectName, fileHeader)
+	if err != nil {
+		return "", err
+	}
+	avatarURL := fmt.Sprintf("%s/%s/%s", config.GetConfig().StorageURL, "user-profile", avatarKey)
+
+	return avatarURL, nil
 }

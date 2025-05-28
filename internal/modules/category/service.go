@@ -31,7 +31,7 @@ func (s *categoryService) GetCategories(ctx context.Context, includeSubs bool) (
 	)
 
 	if includeSubs {
-		records, err := s.categoryRepo.GetWithSubs(ctx)
+		records, err := s.categoryRepo.GetCategoriesWithSubcategories(ctx)
 		if err != nil {
 			logger.ErrorContext(ctx, "db_error",
 				"operation", "categoriesRepo.GetWithSubs",

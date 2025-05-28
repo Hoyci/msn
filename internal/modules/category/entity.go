@@ -1,7 +1,7 @@
 package category
 
 import (
-	"msn/internal/infra/database/model"
+	"msn/internal/infra/database/models"
 	"msn/pkg/common/fault"
 	"msn/pkg/utils/uid"
 	"time"
@@ -15,7 +15,7 @@ type category struct {
 	deleted_at *time.Time
 }
 
-func NewFromModel(m model.Category) *category {
+func NewFromModel(m models.Category) *category {
 	return &category{
 		id:         m.ID,
 		name:       m.Name,
@@ -45,8 +45,8 @@ func New(name string) (*category, error) {
 	return &newCategory, nil
 }
 
-func (c *category) Model() model.Category {
-	return model.Category{
+func (c *category) Model() models.Category {
+	return models.Category{
 		ID:        c.id,
 		Name:      c.name,
 		CreatedAt: c.created_at,

@@ -23,11 +23,11 @@ func NewProvider(accessKey, refreshKey *rsa.PrivateKey) *JWTProvider {
 	}
 }
 
-func (j *JWTProvider) GenerateAccessToken(user dto.UserResponse) (string, *Claims, error) {
+func (j *JWTProvider) GenerateAccessToken(user *dto.EnrichedUserResponse) (string, *Claims, error) {
 	return GenerateToken(j.accessKey, user, AccessTokenDuration)
 }
 
-func (j *JWTProvider) GenerateRefreshToken(user dto.UserResponse) (string, *Claims, error) {
+func (j *JWTProvider) GenerateRefreshToken(user *dto.EnrichedUserResponse) (string, *Claims, error) {
 	return GenerateToken(j.refreshKey, user, RefreshTokenDuration)
 }
 

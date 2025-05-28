@@ -12,11 +12,11 @@ import (
 )
 
 type Claims struct {
-	User dto.UserResponse `json:"user"`
+	User *dto.EnrichedUserResponse `json:"user"`
 	jwt.RegisteredClaims
 }
 
-func NewClaims(user dto.UserResponse, duration time.Duration) (*Claims, error) {
+func NewClaims(user *dto.EnrichedUserResponse, duration time.Duration) (*Claims, error) {
 	jti := uid.New("jti")
 
 	return &Claims{

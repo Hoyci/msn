@@ -10,6 +10,7 @@ import (
 	categoryRepository "msn/internal/infra/database/pg/repositories/category"
 	sessionRepository "msn/internal/infra/database/pg/repositories/session"
 	userRepository "msn/internal/infra/database/pg/repositories/user"
+	userRoleRepository "msn/internal/infra/database/pg/repositories/user_role"
 	authHandler "msn/internal/infra/http/handlers/auth"
 	categoryhandler "msn/internal/infra/http/handlers/category"
 	userHandler "msn/internal/infra/http/handlers/user"
@@ -17,6 +18,7 @@ import (
 	"msn/internal/infra/http/server"
 	"msn/internal/infra/jwt"
 	"msn/internal/infra/logging"
+	"msn/internal/infra/storage"
 	"msn/internal/modules/auth"
 	"msn/internal/modules/category"
 	"msn/internal/modules/session"
@@ -60,15 +62,20 @@ func main() {
 	}
 	defer pgConn.Close()
 
+	storageClient := storage.NewStorageClient(cfg.StorageURL, cfg.StorageAccessKey, cfg.StorageSecretKey)
+
 	userRepo := userRepository.NewRepo(pgConn.DB())
 	categoryRepo := categoryRepository.NewRepo(pgConn.DB())
 	sessionRepo := sessionRepository.NewRepo(pgConn.DB())
+	userRoleRepo := userRoleRepository.NewRepo(pgConn.DB())
 
 	tokenProvider := jwt.NewProvider(cfg.JWTAccessKey, cfg.JWTRefreshKey)
 
 	userService := user.NewService(user.ServiceConfig{
-		UserRepo:     userRepo,
-		CategoryRepo: categoryRepo,
+		UserRepo:      userRepo,
+		CategoryRepo:  categoryRepo,
+		UserRoleRepo:  userRoleRepo,
+		StorageClient: storageClient,
 	})
 	sessionService := session.NewService(session.ServiceConfig{
 		SessionRepo: sessionRepo,
@@ -84,7 +91,7 @@ func main() {
 	})
 
 	authHandler.NewHandler(authService, cfg.JWTAccessKey).RegisterRoutes(router)
-	userHandler.NewHandler(userService).RegisterRoutes(router)
+	userHandler.NewHandler(userService, storageClient).RegisterRoutes(router)
 	categoryhandler.NewHandler(categoryService).RegisterRoutes(router)
 
 	srv := server.New(server.Config{
