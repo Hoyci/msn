@@ -1,23 +1,57 @@
 package dto
 
-import "time"
+import (
+	"mime/multipart"
+	"time"
+)
+
+type CreateAvatar struct {
+	FileHeader *multipart.FileHeader
+}
 
 type CreateUser struct {
-	Name            string  `json:"name"`
-	Email           string  `json:"email"`
-	Password        string  `json:"password"`
-	ConfirmPassword string  `json:"confirm_password"`
-	AvatarUrl       *string `json:"avatar_url"`
-	UserRoleID      string  `json:"user_role_id"`
-	SubcategoryID   *string `json:"subcategory_id,omitempty"`
+	Name            string                `json:"name"`
+	Email           string                `json:"email"`
+	Password        string                `json:"password"`
+	ConfirmPassword string                `json:"confirm_password"`
+	FileHeader      *multipart.FileHeader `json:"file_header"`
+	UserRole        string                `json:"user_role"`
+	SubcategoryID   *string               `json:"subcategory_id,omitempty"`
 }
 
 type UserResponse struct {
 	ID            string    `json:"id"`
 	Name          string    `json:"name"`
 	Email         string    `json:"email"`
-	AvatarURL     *string   `json:"avatar_url"`
+	AvatarURL     string    `json:"avatar_url"`
 	UserRoleID    string    `json:"user_role_id"`
 	SubcategoryID *string   `json:"subcategory_id"`
 	CreatedAt     time.Time `json:"created_at"`
+}
+
+type UserTokenResponse struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+type EnrichedUserResponse struct {
+	ID             string       `json:"id"`
+	Name           string       `json:"name"`
+	Email          string       `json:"email"`
+	AvatarURL      string       `json:"avatar_url"`
+	HashedPassword string       `json:"-"`
+	CreatedAt      time.Time    `json:"created_at"`
+	DeletedAt      *time.Time   `json:"deleted_at"`
+	UserRole       *UserRole    `json:"user_role,omitempty"`
+	Subcategory    *Subcategory `json:"subcategory,omitempty"`
+	Category       *Category    `json:"category,omitempty"`
+}
+
+type ProfessionalUserResponse struct {
+	ID          string       `json:"id"`
+	Name        string       `json:"name"`
+	Email       string       `json:"email"`
+	AvatarURL   string       `json:"avatar_url"`
+	Subcategory *Subcategory `json:"subcategory"`
 }

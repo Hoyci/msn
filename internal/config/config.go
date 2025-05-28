@@ -21,13 +21,16 @@ var (
 )
 
 type Config struct {
-	Port          string          `mapstructure:"PORT"`
-	Environment   string          `mapstructure:"ENVIRONMENT"`
-	AppName       string          `mapstructure:"APP_NAME"`
-	DebugMode     bool            `mapstructure:"DEBUG"`
-	PostgresDSN   string          `mapstructure:"DB_POSTGRES_DSN"`
-	JWTAccessKey  *rsa.PrivateKey `mapstructure:"JWT_ACCESS_KEY"`
-	JWTRefreshKey *rsa.PrivateKey `mapstructure:"JWT_REFRESH_KEY"`
+	Port             string          `mapstructure:"PORT"`
+	Environment      string          `mapstructure:"ENVIRONMENT"`
+	AppName          string          `mapstructure:"APP_NAME"`
+	DebugMode        bool            `mapstructure:"DEBUG"`
+	PostgresDSN      string          `mapstructure:"DB_POSTGRES_DSN"`
+	StorageURL       string          `mapstructure:"STORAGE_URL"`
+	StorageAccessKey string          `mapstructure:"STORAGE_ACCESS_KEY"`
+	StorageSecretKey string          `mapstructure:"STORAGE_SECRET_KEY"`
+	JWTAccessKey     *rsa.PrivateKey `mapstructure:"JWT_ACCESS_KEY"`
+	JWTRefreshKey    *rsa.PrivateKey `mapstructure:"JWT_REFRESH_KEY"`
 }
 
 func GetConfig() *Config {
@@ -60,6 +63,7 @@ func GetConfig() *Config {
 			log.Fatalf("error decoding config: %s", err)
 		}
 	})
+
 	return config
 }
 

@@ -1,7 +1,7 @@
 package session
 
 import (
-	"msn/internal/infra/database/model"
+	"msn/internal/infra/database/models"
 	"msn/pkg/common/fault"
 	"msn/pkg/utils/uid"
 	"time"
@@ -37,7 +37,7 @@ func New(userID, JTI string) (*Session, error) {
 	}, nil
 }
 
-func NewFromModel(m model.Session) *Session {
+func NewFromModel(m models.Session) *Session {
 	return &Session{
 		ID:        m.ID,
 		UserID:    m.UserID,
@@ -49,8 +49,8 @@ func NewFromModel(m model.Session) *Session {
 	}
 }
 
-func (s *Session) ToModel() model.Session {
-	return model.Session{
+func (s *Session) ToModel() models.Session {
+	return models.Session{
 		ID:        s.ID,
 		UserID:    s.UserID,
 		JTI:       s.JTI,

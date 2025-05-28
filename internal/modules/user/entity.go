@@ -1,19 +1,21 @@
 package user
 
 import (
-	"msn/internal/infra/database/model"
+	"msn/internal/infra/database/models"
 	"msn/pkg/common/fault"
 	"msn/pkg/common/valueobjects"
 	"msn/pkg/utils/uid"
 	"time"
 )
 
+// TODO: transform this into a struct that not export any data
+// and create functions like func(u *User) ID { return u.ID } to export data
 type User struct {
 	ID            string
 	Name          string
 	Email         string
 	Password      string
-	AvatarURL     *string
+	AvatarURL     string
 	UserRoleID    string
 	SubcategoryID *string
 	CreatedAt     time.Time
@@ -26,7 +28,6 @@ func New(
 	email,
 	hashedPassword,
 	userRoleID string,
-	avatarURL,
 	subcategoryID *string,
 ) (*User, error) {
 	user := User{
@@ -34,7 +35,6 @@ func New(
 		Name:          name,
 		Email:         email,
 		Password:      hashedPassword,
-		AvatarURL:     avatarURL,
 		UserRoleID:    userRoleID,
 		SubcategoryID: subcategoryID,
 		CreatedAt:     time.Now(),
@@ -53,7 +53,7 @@ func New(
 	return &user, nil
 }
 
-func NewFromModel(m model.User) *User {
+func NewFromModel(m models.User) *User {
 	return &User{
 		ID:            m.ID,
 		Name:          m.Name,
@@ -68,8 +68,8 @@ func NewFromModel(m model.User) *User {
 	}
 }
 
-func (u *User) ToModel() model.User {
-	return model.User{
+func (u *User) ToModel() models.User {
+	return models.User{
 		ID:            u.ID,
 		Name:          u.Name,
 		Email:         u.Email,

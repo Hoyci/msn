@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"msn/internal/infra/database/model"
+	"msn/internal/infra/database/models"
 	"msn/internal/modules/session"
 	"msn/pkg/common/fault"
 	"time"
@@ -24,7 +24,7 @@ func (r *sessionRepository) GetAllByUserID(ctx context.Context, userID string) (
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	dbSessions := make([]model.Session, 0)
+	dbSessions := make([]models.Session, 0)
 	err := r.db.SelectContext(
 		ctx,
 		&dbSessions,
@@ -47,7 +47,7 @@ func (r *sessionRepository) GetActiveByUserID(ctx context.Context, userID string
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	var sessionModel model.Session
+	var sessionModel models.Session
 	err := r.db.GetContext(
 		ctx,
 		&sessionModel,
@@ -71,7 +71,7 @@ func (r *sessionRepository) GetByJTI(ctx context.Context, JTI string) (*session.
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	var sessionModel model.Session
+	var sessionModel models.Session
 	err := r.db.GetContext(
 		ctx,
 		&sessionModel,
