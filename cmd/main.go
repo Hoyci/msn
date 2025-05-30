@@ -8,9 +8,9 @@ import (
 	"msn/internal/config"
 	"msn/internal/infra/database/pg"
 	categoryRepository "msn/internal/infra/database/pg/repositories/category"
+	roleRepository "msn/internal/infra/database/pg/repositories/role"
 	sessionRepository "msn/internal/infra/database/pg/repositories/session"
 	userRepository "msn/internal/infra/database/pg/repositories/user"
-	userRoleRepository "msn/internal/infra/database/pg/repositories/user_role"
 	authHandler "msn/internal/infra/http/handlers/auth"
 	categoryhandler "msn/internal/infra/http/handlers/category"
 	userHandler "msn/internal/infra/http/handlers/user"
@@ -67,7 +67,7 @@ func main() {
 	userRepo := userRepository.NewRepo(pgConn.DB())
 	categoryRepo := categoryRepository.NewRepo(pgConn.DB())
 	sessionRepo := sessionRepository.NewRepo(pgConn.DB())
-	userRoleRepo := userRoleRepository.NewRepo(pgConn.DB())
+	userRoleRepo := roleRepository.NewRepo(pgConn.DB())
 
 	tokenProvider := jwt.NewProvider(cfg.JWTAccessKey, cfg.JWTRefreshKey)
 

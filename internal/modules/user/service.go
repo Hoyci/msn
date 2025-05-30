@@ -9,7 +9,7 @@ import (
 	"msn/internal/infra/logging"
 	"msn/internal/infra/storage"
 	"msn/internal/modules/category"
-	userrole "msn/internal/modules/user_role"
+	"msn/internal/modules/role"
 	"msn/pkg/common/dto"
 	"msn/pkg/common/fault"
 	"msn/pkg/common/valueobjects"
@@ -21,14 +21,14 @@ import (
 type ServiceConfig struct {
 	UserRepo      UserRepository
 	CategoryRepo  category.Repository
-	UserRoleRepo  userrole.Repository
+	UserRoleRepo  role.Repository
 	StorageClient *storage.StorageClient
 }
 
 type service struct {
 	userRepo      UserRepository
 	categoryRepo  category.Repository
-	userRoleRepo  userrole.Repository
+	userRoleRepo  role.Repository
 	storageClient *storage.StorageClient
 }
 
@@ -57,7 +57,7 @@ func (s service) CreateUser(ctx context.Context, input dto.CreateUser) (*dto.Use
 		return nil, fault.NewConflict("email already taken")
 	}
 
-	role, err := s.userRoleRepo.GetUserRoleByName(context.Background(), input.UserRole)
+	role, err := s.userRoleRepo.GetRoleByName(context.Background(), input.UserRole)
 	if err != nil {
 		return nil, fault.NewInternalServerError("failed to validate user role")
 	}

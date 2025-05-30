@@ -1,4 +1,4 @@
-package userrole
+package role
 
 import (
 	"msn/internal/infra/database/models"
@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type UserRole struct {
+type Role struct {
 	ID        string
 	Name      string
 	CreatedAt time.Time
@@ -17,9 +17,9 @@ type UserRole struct {
 
 func New(
 	name string,
-) (*UserRole, error) {
-	userRole := UserRole{
-		ID:        uid.New("user_role"),
+) (*Role, error) {
+	userRole := Role{
+		ID:        uid.New("role"),
 		Name:      name,
 		CreatedAt: time.Now(),
 		UpdatedAt: nil,
@@ -37,8 +37,8 @@ func New(
 	return &userRole, nil
 }
 
-func NewFromModel(m models.UserRole) *UserRole {
-	return &UserRole{
+func NewFromModel(m models.Role) *Role {
+	return &Role{
 		ID:        m.ID,
 		Name:      m.Name,
 		CreatedAt: m.CreatedAt,
@@ -47,8 +47,8 @@ func NewFromModel(m models.UserRole) *UserRole {
 	}
 }
 
-func (ur *UserRole) ToModel() models.UserRole {
-	return models.UserRole{
+func (ur *Role) ToModel() models.Role {
+	return models.Role{
 		ID:        ur.ID,
 		Name:      ur.Name,
 		CreatedAt: ur.CreatedAt,
@@ -57,7 +57,7 @@ func (ur *UserRole) ToModel() models.UserRole {
 	}
 }
 
-func (ur *UserRole) validate() error {
+func (ur *Role) validate() error {
 	if ur.Name == "" {
 		return fault.NewBadRequest("role name is required")
 	}

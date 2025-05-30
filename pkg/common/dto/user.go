@@ -15,7 +15,7 @@ type CreateUser struct {
 	Password        string                `json:"password"`
 	ConfirmPassword string                `json:"confirm_password"`
 	FileHeader      *multipart.FileHeader `json:"file_header"`
-	UserRole        string                `json:"user_role"`
+	UserRole        string                `json:"role"`
 	SubcategoryID   *string               `json:"subcategory_id,omitempty"`
 }
 
@@ -24,7 +24,7 @@ type UserResponse struct {
 	Name          string    `json:"name"`
 	Email         string    `json:"email"`
 	AvatarURL     string    `json:"avatar_url"`
-	UserRoleID    string    `json:"user_role_id"`
+	RoleID        string    `json:"role_id"`
 	SubcategoryID *string   `json:"subcategory_id"`
 	CreatedAt     time.Time `json:"created_at"`
 }
@@ -43,7 +43,7 @@ type EnrichedUserResponse struct {
 	HashedPassword string       `json:"-"`
 	CreatedAt      time.Time    `json:"created_at"`
 	DeletedAt      *time.Time   `json:"deleted_at"`
-	UserRole       *UserRole    `json:"user_role,omitempty"`
+	Role           *Role        `json:"role,omitempty"`
 	Subcategory    *Subcategory `json:"subcategory,omitempty"`
 	Category       *Category    `json:"category,omitempty"`
 }

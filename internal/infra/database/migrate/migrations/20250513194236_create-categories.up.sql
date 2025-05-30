@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS categories (
 
 CREATE TABLE IF NOT EXISTS subcategories (
   id          VARCHAR(255) PRIMARY KEY DEFAULT new_id('subcategory'),
-  name        VARCHAR(255) NOT NULL,
+  name        VARCHAR(255) NOT NULL UNIQUE,
   category_id VARCHAR(255) NOT NULL
                REFERENCES categories(id),
   created_at  TIMESTAMP   NOT NULL DEFAULT NOW(),
@@ -72,7 +72,8 @@ VALUES
   ('Arte, Música e Eventos', '🎶'),
   ('Transporte e Veículos', '🚗'),
   ('Educação e Ensino', '📚'),
-  ('Saúde e Bem-estar', '💊');
+  ('Saúde e Bem-estar', '💊')
+ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO subcategories (name, category_id)
 VALUES
@@ -123,4 +124,5 @@ VALUES
   ('Intérpretes de Libras', (SELECT id FROM categories WHERE name = 'Educação e Ensino')),
 
   ('Nutricionistas', (SELECT id FROM categories WHERE name = 'Saúde e Bem-estar')),
-  ('Personal Trainers', (SELECT id FROM categories WHERE name = 'Saúde e Bem-estar'));
+  ('Personal Trainers', (SELECT id FROM categories WHERE name = 'Saúde e Bem-estar'))
+ON CONFLICT (name) DO NOTHING;
