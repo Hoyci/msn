@@ -1,4 +1,4 @@
-package userrole
+package role
 
 import (
 	"msn/internal/infra/database/models"
@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type UserRole struct {
+type Role struct {
 	ID        string
 	Name      string
 	CreatedAt time.Time
@@ -17,16 +17,16 @@ type UserRole struct {
 
 func New(
 	name string,
-) (*UserRole, error) {
-	userRole := UserRole{
-		ID:        uid.New("user_role"),
+) (*Role, error) {
+	role := Role{
+		ID:        uid.New("role"),
 		Name:      name,
 		CreatedAt: time.Now(),
 		UpdatedAt: nil,
 		DeletedAt: nil,
 	}
 
-	if err := userRole.validate(); err != nil {
+	if err := role.validate(); err != nil {
 		return nil, fault.New(
 			"failed to create user entity",
 			fault.WithTag(fault.INVALID_ENTITY),
@@ -34,11 +34,11 @@ func New(
 		)
 	}
 
-	return &userRole, nil
+	return &role, nil
 }
 
-func NewFromModel(m models.UserRole) *UserRole {
-	return &UserRole{
+func NewFromModel(m models.Role) *Role {
+	return &Role{
 		ID:        m.ID,
 		Name:      m.Name,
 		CreatedAt: m.CreatedAt,
@@ -47,18 +47,18 @@ func NewFromModel(m models.UserRole) *UserRole {
 	}
 }
 
-func (ur *UserRole) ToModel() models.UserRole {
-	return models.UserRole{
-		ID:        ur.ID,
-		Name:      ur.Name,
-		CreatedAt: ur.CreatedAt,
-		UpdatedAt: ur.UpdatedAt,
-		DeletedAt: ur.DeletedAt,
+func (r *Role) ToModel() models.Role {
+	return models.Role{
+		ID:        r.ID,
+		Name:      r.Name,
+		CreatedAt: r.CreatedAt,
+		UpdatedAt: r.UpdatedAt,
+		DeletedAt: r.DeletedAt,
 	}
 }
 
-func (ur *UserRole) validate() error {
-	if ur.Name == "" {
+func (r *Role) validate() error {
+	if r.Name == "" {
 		return fault.NewBadRequest("role name is required")
 	}
 

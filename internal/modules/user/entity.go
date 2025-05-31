@@ -16,7 +16,7 @@ type User struct {
 	Email         string
 	Password      string
 	AvatarURL     string
-	UserRoleID    string
+	RoleID        string
 	SubcategoryID *string
 	CreatedAt     time.Time
 	UpdatedAt     *time.Time
@@ -27,7 +27,7 @@ func New(
 	name,
 	email,
 	hashedPassword,
-	userRoleID string,
+	RoleID string,
 	subcategoryID *string,
 ) (*User, error) {
 	user := User{
@@ -35,7 +35,7 @@ func New(
 		Name:          name,
 		Email:         email,
 		Password:      hashedPassword,
-		UserRoleID:    userRoleID,
+		RoleID:        RoleID,
 		SubcategoryID: subcategoryID,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     nil,
@@ -60,7 +60,7 @@ func NewFromModel(m models.User) *User {
 		Email:         m.Email,
 		Password:      m.Password,
 		AvatarURL:     m.AvatarURL,
-		UserRoleID:    m.UserRoleID,
+		RoleID:        m.RoleID,
 		SubcategoryID: m.SubcategoryID,
 		CreatedAt:     m.CreatedAt,
 		UpdatedAt:     m.UpdatedAt,
@@ -75,7 +75,7 @@ func (u *User) ToModel() models.User {
 		Email:         u.Email,
 		Password:      u.Password,
 		AvatarURL:     u.AvatarURL,
-		UserRoleID:    u.UserRoleID,
+		RoleID:        u.RoleID,
 		SubcategoryID: u.SubcategoryID,
 		CreatedAt:     u.CreatedAt,
 		UpdatedAt:     u.UpdatedAt,
@@ -90,13 +90,13 @@ func (u *User) validate() error {
 	if _, err := valueobjects.NewEmail(u.Email); err != nil {
 		return err
 	}
-	if u.UserRoleID == "" {
+	if u.RoleID == "" {
 		return fault.NewBadRequest("user role is required")
 	}
-	if u.UserRoleID == "client" && u.SubcategoryID != nil {
+	if u.RoleID == "client" && u.SubcategoryID != nil {
 		return fault.NewBadRequest("clients cannot have subcategories")
 	}
-	if u.UserRoleID == "professional" && u.SubcategoryID == nil {
+	if u.RoleID == "professional" && u.SubcategoryID == nil {
 		return fault.NewBadRequest("professionals must have a subcategory")
 	}
 

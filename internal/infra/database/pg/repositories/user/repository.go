@@ -69,11 +69,11 @@ func (r userRepo) GetEnrichedByEmail(ctx context.Context, email string) (*dto.En
 	query := `
     SELECT
       u.id, u.name, u.email, u.avatar_url, u.password, u.created_at, u.deleted_at,
-      ur.id   AS role_id,          ur.name AS role_name,
+      r.id  	AS role_id,          r.name AS role_name,
       s.id    AS subcategory_id,   s.name AS subcategory_name,
       c.id    AS category_id,      c.name AS category_name, c.icon as category_icon
     FROM users u
-    LEFT JOIN user_roles ur    ON ur.id = u.user_role_id
+    LEFT JOIN roles r    ON r.id = u.role_id
     LEFT JOIN subcategories s  ON s.id  = u.subcategory_id
     LEFT JOIN categories c     ON c.id  = s.category_id
     WHERE u.email = $1
@@ -94,7 +94,7 @@ func (r userRepo) GetEnrichedByEmail(ctx context.Context, email string) (*dto.En
 		HashedPassword: out.HashedPassword,
 		CreatedAt:      out.CreatedAt,
 		DeletedAt:      out.DeletedAt,
-		UserRole: &dto.UserRole{
+		Role: &dto.Role{
 			ID:   out.RoleID,
 			Name: out.RoleName,
 		},
@@ -155,7 +155,7 @@ func (r userRepo) Create(ctx context.Context, user *user.User) error {
 			email,
 			password,
 			avatar_url,
-			user_role_id,
+			role_id,
 			subcategory_id,
 			created_at,
 			updated_at,
@@ -166,7 +166,7 @@ func (r userRepo) Create(ctx context.Context, user *user.User) error {
 			:email,
 			:password,
 			:avatar_url,
-			:user_role_id,
+			:role_id,
 			:subcategory_id,
 			:created_at,
 			:updated_at,
@@ -206,9 +206,9 @@ func (r userRepo) GetProfessionalUsers(ctx context.Context) ([]*dto.Professional
 			s."name" as subcategory_name,
 			s.category_id as category_id
 		FROM users u
-		LEFT JOIN user_roles ur ON ur.id = u.user_role_id
+		LEFT JOIN roles r ON r.id = u.role_id
 		LEFT JOIN subcategories s ON s.id = u.subcategory_id
-		WHERE ur."name" = 'professional';
+		WHERE r."name" = 'professional' AND u.deleted_at IS NULL;
 	`
 
 	err := r.db.SelectContext(ctx, &out, query)
@@ -219,8 +219,6 @@ func (r userRepo) GetProfessionalUsers(ctx context.Context) ([]*dto.Professional
 		}
 		return nil, fault.New("failed to retrieve user", fault.WithError(err))
 	}
-
-	fmt.Println(out[0])
 
 	var users []*dto.ProfessionalUserResponse
 

@@ -58,7 +58,7 @@ func (h UserHandler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 	confirm := r.FormValue("confirm_password")
-	userRole := r.FormValue("user_role")
+	userRole := r.FormValue("role")
 	subcat := r.FormValue("subcategory_id")
 	var subcategoryID *string
 	if subcat != "" {
@@ -91,7 +91,7 @@ func (h UserHandler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		Password:        password,
 		ConfirmPassword: confirm,
 		FileHeader:      header,
-		UserRole:        userRole,
+		Role:            userRole,
 		SubcategoryID:   subcategoryID,
 	}
 

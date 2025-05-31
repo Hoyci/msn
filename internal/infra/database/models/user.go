@@ -10,7 +10,7 @@ type User struct {
 	Email         string     `db:"email"`
 	Password      string     `db:"password"`
 	AvatarURL     string     `db:"avatar_url"`
-	UserRoleID    string     `db:"user_role_id"`
+	RoleID        string     `db:"role_id"`
 	SubcategoryID *string    `db:"subcategory_id"`
 	CreatedAt     time.Time  `db:"created_at"`
 	UpdatedAt     *time.Time `db:"updated_at"`

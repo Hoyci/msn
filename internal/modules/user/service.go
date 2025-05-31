@@ -9,7 +9,7 @@ import (
 	"msn/internal/infra/logging"
 	"msn/internal/infra/storage"
 	"msn/internal/modules/category"
-	userrole "msn/internal/modules/user_role"
+	"msn/internal/modules/role"
 	"msn/pkg/common/dto"
 	"msn/pkg/common/fault"
 	"msn/pkg/common/valueobjects"
@@ -21,14 +21,14 @@ import (
 type ServiceConfig struct {
 	UserRepo      UserRepository
 	CategoryRepo  category.Repository
-	UserRoleRepo  userrole.Repository
+	RoleRepo      role.Repository
 	StorageClient *storage.StorageClient
 }
 
 type service struct {
 	userRepo      UserRepository
 	categoryRepo  category.Repository
-	userRoleRepo  userrole.Repository
+	roleRepo      role.Repository
 	storageClient *storage.StorageClient
 }
 
@@ -36,7 +36,7 @@ func NewService(c ServiceConfig) UserService {
 	return &service{
 		userRepo:      c.UserRepo,
 		categoryRepo:  c.CategoryRepo,
-		userRoleRepo:  c.UserRoleRepo,
+		roleRepo:      c.RoleRepo,
 		storageClient: c.StorageClient,
 	}
 }
@@ -57,7 +57,7 @@ func (s service) CreateUser(ctx context.Context, input dto.CreateUser) (*dto.Use
 		return nil, fault.NewConflict("email already taken")
 	}
 
-	role, err := s.userRoleRepo.GetUserRoleByName(context.Background(), input.UserRole)
+	role, err := s.roleRepo.GetRoleByName(context.Background(), input.Role)
 	if err != nil {
 		return nil, fault.NewInternalServerError("failed to validate user role")
 	}
@@ -115,7 +115,7 @@ func (s service) CreateUser(ctx context.Context, input dto.CreateUser) (*dto.Use
 		ID:            user.ID,
 		Name:          user.Name,
 		Email:         user.Email,
-		UserRoleID:    user.UserRoleID,
+		RoleID:        user.RoleID,
 		SubcategoryID: user.SubcategoryID,
 		AvatarURL:     user.AvatarURL,
 		CreatedAt:     user.CreatedAt,
@@ -135,7 +135,7 @@ func (s service) GetUserByEmail(ctx context.Context, email string) (*dto.UserRes
 		ID:            user.ID,
 		Name:          user.Name,
 		Email:         user.Email,
-		UserRoleID:    user.UserRoleID,
+		RoleID:        user.RoleID,
 		SubcategoryID: user.SubcategoryID,
 		AvatarURL:     user.AvatarURL,
 		CreatedAt:     user.CreatedAt,
@@ -155,7 +155,7 @@ func (s service) GetUserByID(ctx context.Context, userId string) (*dto.UserRespo
 		ID:            user.ID,
 		Name:          user.Name,
 		Email:         user.Email,
-		UserRoleID:    user.UserRoleID,
+		RoleID:        user.RoleID,
 		SubcategoryID: user.SubcategoryID,
 		AvatarURL:     user.AvatarURL,
 		CreatedAt:     user.CreatedAt,
@@ -167,8 +167,9 @@ func (s service) GetProfessionalUsers(ctx context.Context) ([]*dto.ProfessionalU
 	if err != nil {
 		return nil, fault.NewBadRequest("failed to retrieve professional users")
 	}
+
 	if professionals == nil {
-		return nil, fault.NewNotFound("professional users not found")
+		professionals = []*dto.ProfessionalUserResponse{}
 	}
 
 	return professionals, nil
