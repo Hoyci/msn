@@ -15,7 +15,7 @@ type CreateUser struct {
 	Password        string                `json:"password"`
 	ConfirmPassword string                `json:"confirm_password"`
 	FileHeader      *multipart.FileHeader `json:"file_header"`
-	UserRole        string                `json:"role"`
+	Role            string                `json:"role"`
 	SubcategoryID   *string               `json:"subcategory_id,omitempty"`
 }
 

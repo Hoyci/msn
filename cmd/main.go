@@ -67,14 +67,14 @@ func main() {
 	userRepo := userRepository.NewRepo(pgConn.DB())
 	categoryRepo := categoryRepository.NewRepo(pgConn.DB())
 	sessionRepo := sessionRepository.NewRepo(pgConn.DB())
-	userRoleRepo := roleRepository.NewRepo(pgConn.DB())
+	roleRepo := roleRepository.NewRepo(pgConn.DB())
 
 	tokenProvider := jwt.NewProvider(cfg.JWTAccessKey, cfg.JWTRefreshKey)
 
 	userService := user.NewService(user.ServiceConfig{
 		UserRepo:      userRepo,
 		CategoryRepo:  categoryRepo,
-		UserRoleRepo:  userRoleRepo,
+		RoleRepo:      roleRepo,
 		StorageClient: storageClient,
 	})
 	sessionService := session.NewService(session.ServiceConfig{

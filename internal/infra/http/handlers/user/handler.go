@@ -91,7 +91,7 @@ func (h UserHandler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		Password:        password,
 		ConfirmPassword: confirm,
 		FileHeader:      header,
-		UserRole:        userRole,
+		Role:            userRole,
 		SubcategoryID:   subcategoryID,
 	}
 

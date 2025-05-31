@@ -18,7 +18,7 @@ type Role struct {
 func New(
 	name string,
 ) (*Role, error) {
-	userRole := Role{
+	role := Role{
 		ID:        uid.New("role"),
 		Name:      name,
 		CreatedAt: time.Now(),
@@ -26,7 +26,7 @@ func New(
 		DeletedAt: nil,
 	}
 
-	if err := userRole.validate(); err != nil {
+	if err := role.validate(); err != nil {
 		return nil, fault.New(
 			"failed to create user entity",
 			fault.WithTag(fault.INVALID_ENTITY),
@@ -34,7 +34,7 @@ func New(
 		)
 	}
 
-	return &userRole, nil
+	return &role, nil
 }
 
 func NewFromModel(m models.Role) *Role {
@@ -47,18 +47,18 @@ func NewFromModel(m models.Role) *Role {
 	}
 }
 
-func (ur *Role) ToModel() models.Role {
+func (r *Role) ToModel() models.Role {
 	return models.Role{
-		ID:        ur.ID,
-		Name:      ur.Name,
-		CreatedAt: ur.CreatedAt,
-		UpdatedAt: ur.UpdatedAt,
-		DeletedAt: ur.DeletedAt,
+		ID:        r.ID,
+		Name:      r.Name,
+		CreatedAt: r.CreatedAt,
+		UpdatedAt: r.UpdatedAt,
+		DeletedAt: r.DeletedAt,
 	}
 }
 
-func (ur *Role) validate() error {
-	if ur.Name == "" {
+func (r *Role) validate() error {
+	if r.Name == "" {
 		return fault.NewBadRequest("role name is required")
 	}
 
