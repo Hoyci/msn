@@ -2,31 +2,32 @@ package subcategory
 
 import (
 	"msn/internal/infra/database/models"
+	"msn/internal/modules/category"
 	"msn/pkg/common/fault"
 	"msn/pkg/utils/uid"
 	"time"
 )
 
 type Subcategory struct {
-	ID         string
-	Name       string
-	CategoryID string
-	CreatedAt  time.Time
-	UpdatedAt  *time.Time
-	DeletedAt  *time.Time
+	id        string
+	name      string
+	category  category.Category
+	createdAt time.Time
+	updatedAt *time.Time
+	deletedAt *time.Time
 }
 
 func New(
 	name,
 	categoryID string,
 ) (*Subcategory, error) {
-	subcategory := Subcategory{
-		ID:         uid.New("subcategory"),
-		Name:       name,
-		CategoryID: categoryID,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  nil,
-		DeletedAt:  nil,
+	subcategory := &Subcategory{
+		id:        uid.New("subcategory"),
+		name:      name,
+		category:  *category.FromID(categoryID),
+		createdAt: time.Now(),
+		updatedAt: nil,
+		deletedAt: nil,
 	}
 
 	if err := subcategory.validate(); err != nil {
@@ -37,38 +38,62 @@ func New(
 		)
 	}
 
-	return &subcategory, nil
+	return subcategory, nil
 }
 
 func NewFromModel(m models.Subcategory) *Subcategory {
 	return &Subcategory{
-		ID:         m.ID,
-		Name:       m.Name,
-		CategoryID: m.CategoryID,
-		CreatedAt:  m.CreatedAt,
-		UpdatedAt:  m.UpdatedAt,
-		DeletedAt:  m.DeletedAt,
+		id:        m.ID,
+		name:      m.Name,
+		category:  *category.FromID(m.CategoryID),
+		createdAt: m.CreatedAt,
+		updatedAt: m.UpdatedAt,
+		deletedAt: m.DeletedAt,
 	}
 }
 
 func (s *Subcategory) ToModel() models.Subcategory {
 	return models.Subcategory{
-		ID:         s.ID,
-		Name:       s.Name,
-		CategoryID: s.CategoryID,
-		CreatedAt:  s.CreatedAt,
-		UpdatedAt:  s.UpdatedAt,
-		DeletedAt:  s.DeletedAt,
+		ID:         s.id,
+		Name:       s.name,
+		CategoryID: s.category.ID(),
+		CreatedAt:  s.createdAt,
+		UpdatedAt:  s.updatedAt,
+		DeletedAt:  s.deletedAt,
 	}
 }
 
 func (s *Subcategory) validate() error {
-	if s.Name == "" {
+	if s.name == "" {
 		return fault.NewBadRequest("name is required")
 	}
-	if s.CategoryID == "" {
+	if s.category.ID() == "" {
 		return fault.NewBadRequest("category_id is required")
 	}
 
 	return nil
+}
+
+func FromID(id string) *Subcategory {
+	return &Subcategory{id: id}
+}
+
+func (s *Subcategory) ID() string {
+	return s.id
+}
+
+func (s *Subcategory) Name() string {
+	return s.name
+}
+
+func (s *Subcategory) Category() category.Category {
+	return s.category
+}
+
+func (s *Subcategory) CreatedAt() time.Time {
+	return s.createdAt
+}
+
+func (s *Subcategory) DeletedAt() *time.Time {
+	return s.deletedAt
 }

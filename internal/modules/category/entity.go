@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type category struct {
+type Category struct {
 	id         string
 	name       string
 	created_at time.Time
@@ -15,8 +15,8 @@ type category struct {
 	deleted_at *time.Time
 }
 
-func NewFromModel(m models.Category) *category {
-	return &category{
+func NewFromModel(m models.Category) *Category {
+	return &Category{
 		id:         m.ID,
 		name:       m.Name,
 		created_at: m.CreatedAt,
@@ -25,8 +25,8 @@ func NewFromModel(m models.Category) *category {
 	}
 }
 
-func New(name string) (*category, error) {
-	newCategory := category{
+func New(name string) (*Category, error) {
+	newCategory := Category{
 		id:         uid.New("category"),
 		name:       name,
 		created_at: time.Now(),
@@ -45,7 +45,7 @@ func New(name string) (*category, error) {
 	return &newCategory, nil
 }
 
-func (c *category) Model() models.Category {
+func (c *Category) Model() models.Category {
 	return models.Category{
 		ID:        c.id,
 		Name:      c.name,
@@ -55,9 +55,29 @@ func (c *category) Model() models.Category {
 	}
 }
 
-func (c *category) validate() error {
+func (c *Category) validate() error {
 	if c.name == "" {
 		return fault.New("category name is required")
 	}
 	return nil
+}
+
+func FromID(id string) *Category {
+	return &Category{id: id}
+}
+
+func (c *Category) ID() string {
+	return c.id
+}
+
+func (c *Category) Name() string {
+	return c.name
+}
+
+func (c *Category) CreatedAt() time.Time {
+	return c.created_at
+}
+
+func (c *Category) DeletedAt() *time.Time {
+	return c.deleted_at
 }

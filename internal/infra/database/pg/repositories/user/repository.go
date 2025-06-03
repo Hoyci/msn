@@ -123,7 +123,12 @@ func (r userRepo) GetByEmail(ctx context.Context, email string) (*user.User, err
 		return nil, fault.New("failed to retrieve user by email", fault.WithError(err))
 	}
 
-	return user.NewFromModel(modelUser), nil
+	user, err := user.NewFromModel(modelUser)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func (r userRepo) GetByID(ctx context.Context, userId string) (*user.User, error) {
@@ -139,7 +144,12 @@ func (r userRepo) GetByID(ctx context.Context, userId string) (*user.User, error
 		return nil, fault.New("failed to retrieve user", fault.WithError(err))
 	}
 
-	return user.NewFromModel(modelUser), nil
+	user, err := user.NewFromModel(modelUser)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func (r userRepo) Create(ctx context.Context, user *user.User) error {

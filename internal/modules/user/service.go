@@ -14,6 +14,7 @@ import (
 	"msn/pkg/common/fault"
 	"msn/pkg/common/valueobjects"
 	"msn/pkg/utils/dbutil"
+	"msn/pkg/utils/uid"
 
 	"github.com/lib/pq"
 )
@@ -67,24 +68,26 @@ func (s service) CreateUser(ctx context.Context, input dto.CreateUser) (*dto.Use
 		return nil, fault.NewBadRequest(err.Error())
 	}
 
+	newUserID := uid.New("user")
+
+	avatarURL, err := s.UploadUserPicture(ctx, newUserID, input.FileHeader)
+	if err != nil {
+		return nil, fault.NewInternalServerError("failed to upload avatar: " + err.Error())
+	}
+
 	user, err := New(
+		newUserID,
 		input.Name,
 		input.Email,
 		password.Hash,
-		role.ID,
+		avatarURL,
+		role.ID(),
 		input.SubcategoryID,
 	)
 	if err != nil {
 		logger.DebugContext(ctx, "invalid user entity", "error", err)
 		return nil, fault.NewUnprocessableEntity(err.Error())
 	}
-
-	avatarUrl, err := s.UploadUserPicture(ctx, user.ID, input.FileHeader)
-	if err != nil {
-		return nil, fault.NewInternalServerError(err.Error())
-	}
-
-	user.AvatarURL = avatarUrl
 
 	if err = s.userRepo.Create(ctx, user); err != nil {
 		logger.ErrorContext(ctx, "db_error",
@@ -111,15 +114,7 @@ func (s service) CreateUser(ctx context.Context, input dto.CreateUser) (*dto.Use
 		"email", user.Email,
 	)
 
-	return &dto.UserResponse{
-		ID:            user.ID,
-		Name:          user.Name,
-		Email:         user.Email,
-		RoleID:        user.RoleID,
-		SubcategoryID: user.SubcategoryID,
-		AvatarURL:     user.AvatarURL,
-		CreatedAt:     user.CreatedAt,
-	}, nil
+	return user.ToResponse(), nil
 }
 
 func (s service) GetUserByEmail(ctx context.Context, email string) (*dto.UserResponse, error) {
@@ -131,15 +126,7 @@ func (s service) GetUserByEmail(ctx context.Context, email string) (*dto.UserRes
 		return nil, fault.NewNotFound("user not found")
 	}
 
-	return &dto.UserResponse{
-		ID:            user.ID,
-		Name:          user.Name,
-		Email:         user.Email,
-		RoleID:        user.RoleID,
-		SubcategoryID: user.SubcategoryID,
-		AvatarURL:     user.AvatarURL,
-		CreatedAt:     user.CreatedAt,
-	}, nil
+	return user.ToResponse(), nil
 }
 
 func (s service) GetUserByID(ctx context.Context, userId string) (*dto.UserResponse, error) {
@@ -151,15 +138,7 @@ func (s service) GetUserByID(ctx context.Context, userId string) (*dto.UserRespo
 		return nil, fault.NewNotFound("user not found")
 	}
 
-	return &dto.UserResponse{
-		ID:            user.ID,
-		Name:          user.Name,
-		Email:         user.Email,
-		RoleID:        user.RoleID,
-		SubcategoryID: user.SubcategoryID,
-		AvatarURL:     user.AvatarURL,
-		CreatedAt:     user.CreatedAt,
-	}, nil
+	return user.ToResponse(), nil
 }
 
 func (s service) GetProfessionalUsers(ctx context.Context) ([]*dto.ProfessionalUserResponse, error) {
